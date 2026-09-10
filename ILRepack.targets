@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <Target Name="ILRepacker" AfterTargets="Build">
+        <ItemGroup>
+            <!-- OttoLens has no merged dependencies. The target stays so the package
+                 targets in the csproj can hang off it, the same as the other Otto mods. -->
+            <InputAssemblies Include="$(TargetPath)" />
+            <ILRepackLibraryPath Include="$(OutputPath)" />
+            <ILRepackLibraryPath Include="$(BepInExPath)/core" />
+            <ILRepackLibraryPath Include="$(CorlibPath)" />
+        </ItemGroup>
+        <ILRepack Parallel="true" DebugInfo="true" Internalize="true" InputAssemblies="@(InputAssemblies)" OutputFile="$(TargetPath)" TargetKind="SameAsPrimaryAssembly" LibraryPath="@(ILRepackLibraryPath)" />
+    </Target>
+</Project>
