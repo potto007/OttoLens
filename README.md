@@ -22,26 +22,36 @@ meters, and then item rows with the icon, the name and the count.
   a slot meter and a `Free N` footer. Rows past the cap collapse to `and N more`.
 - **Fires, torches, braziers and hearths.** Fuel left and how long it burns, in
   game days when it runs long.
-- **Smelters, kilns and blast furnaces.** Fuel, the ore queue, and finished bars
-  waiting to be picked up.
-- **Cooking stations and ovens.** Each slot, what is on it, and the time to done
-  or to burnt.
-- **Fermenters, beehives and sap collectors.** Contents, time to ready, and the
-  honey or sap level.
-- **Plants and pickables.** Grow progress, and the item and yield on a live
-  bush. Respawn timers on picked bushes are opt in (`ShowRespawn`).
+- **Smelters, kilns and blast furnaces.** Fuel, the ore queue, time to the next
+  bar, time to the last one, and finished bars waiting to be picked up. A
+  windmill smelter with no wind says so instead of showing a countdown that
+  would never move.
+- **Cooking stations and ovens.** What is cooking, what is done, time until the
+  next piece is done, and time until the first one burns.
+- **Fermenters, beehives and sap collectors.** What is brewing and the time to
+  ready, or the honey or sap level and the time to the next unit.
+- **Plants and pickables.** Grow progress on a crop, or the reason it stopped
+  growing, and the item and yield on a live bush. Respawn timers on picked bushes
+  are opt in (`ShowRespawn`).
 - **Build pieces.** Health and support, with the hammer out by default so the
   panel stays out of the way during normal play.
-- **Rocks, trees and logs.** Health as a fraction. Trees are off by default.
+- **Mineable rocks, trees, stumps and logs.** Health as a percent, and the tool
+  tier you need when yours is too low. Trees, stumps, logs and small rocks are
+  off by default because a plain tree is a hover target and the panel would
+  follow you through every forest.
 - **Item stands, armor stands, tombstones, tamed creatures, wisp spawners, shield
   generators, feasts, ground items and crafting stations.**
 
 ### What it does not do
 
-OttoLens reads. It never writes to the world. It does not change burn rates,
-cook times, fuel limits, or anything else about how the game plays. It does not
-patch the hover text itself, so it sits alongside other hover mods instead of
-fighting them. It is client only and needs nothing on the server.
+OttoLens only reads. It never writes to the world, so burn rates, cook times,
+fuel limits and everything else about how the game plays are exactly what the
+game set. It does not patch the hover text itself, so it sits alongside other
+hover mods instead of fighting them. It is client only and needs nothing on the
+server.
+
+If a reader throws on some modded object, the panel hides for that target and
+the error is logged once. The HUD keeps running.
 
 A world-placed chest you have not opened yet shows its title and `Contents
 unknown`. Open it once and the panel fills in. That is on by default because
@@ -53,15 +63,18 @@ Bloom still glows. Only the smudges on the camera lens are gone. Set
 
 --------------------
 
-`A config file BepInEx/config/potto007.OttoLens.cfg is created after you run the game once with this mod.`
+The game writes `BepInEx/config/potto007.OttoLens.cfg` the first time it runs
+with the mod loaded.
 
 Change it in a text editor or in game with Configuration Manager. Layout knobs
-apply on the next hover. `MaxRows` and `ShowNames` rebuild the panel at once.
+apply the next time the panel builds for a new target. `MaxRows`, `ShowNames`
+and `SortRows` rebuild the panel at once, and any change under `Targets` takes
+effect on the target you are already looking at.
 
 | Section | Key | Default | What it does |
 | --- | --- | --- | --- |
 | OttoLens | `Enabled` | `true` | Master switch. Off hides the panel and skips every reader. |
-| OttoLens | `ToggleKey` | `H` | Key that flips the master switch in game. `None` disables the key. |
+| OttoLens | `ToggleKey` | `H` | Key that flips the master switch in game. `None` disables the key. It is ignored while chat, a sign, the console or any other text field has the keyboard. |
 | OttoLens | `OffsetX` | `150` | Left edge of the panel, pixels right of screen centre. 96 to 600. |
 | OttoLens | `OffsetY` | `-32` | Top edge of the panel, pixels below screen centre. -400 to -16. |
 | OttoLens | `PanelWidth` | `300` | Panel width in pixels. 240 to 420. |
@@ -87,7 +100,7 @@ apply on the next hover. `MaxRows` and `ShowNames` rebuild the panel at once.
 | Targets | `ShowRespawn` | `false` | Show the respawn countdown on an already picked pickable. Needs `Pickables` on. |
 | Targets | `BuildPieces` | `WithHammer` | `Off`, `WithHammer` for place mode only, or `Always` for any hovered piece. |
 | Targets | `Mineables` | `true` | Mineable rocks. |
-| Targets | `TreesAndRocks` | `false` | Trees, stumps and logs. |
+| Targets | `TreesAndRocks` | `false` | Trees, stumps, logs and small rocks. Costs nothing while off and no extra raycast while on. |
 | Targets | `Stands` | `true` | Item stands and armor stands. |
 | Targets | `Creatures` | `true` | Tamed creatures and pets. |
 | Targets | `Misc` | `true` | Tombstones, wisp spawners, shield generators, feasts, ground items and crafting stations. |
@@ -115,6 +128,6 @@ renders on the Changelog tab of the Thunderstore package page.
 
 ## Credits
 
-OttoLens is written and maintained by **Paul Otto**. It is a clean-room build.
-I wrote every reader from the game's own behaviour in 1.0.7, and it depends on
-nothing but BepInEx and Harmony. MIT licence.
+OttoLens is written and maintained by Paul Otto. I wrote every reader against
+the game's own behaviour in 1.0.7, and the only dependency is the BepInEx pack,
+which brings Harmony with it. MIT licence.
