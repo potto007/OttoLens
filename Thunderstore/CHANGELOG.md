@@ -2,16 +2,6 @@
 
 All notable changes to OttoLens.
 
-## Unreleased
-
-- Lens dirt is off by default, because the Eye of Odin makes all things clear.
-  `RemoveLensDirt` brings it back.
-- Config keys are PascalCase.
-- Oven and cooking station fuel time moves to its own `Fuel` row, as on fires.
-  It no longer overlaps the fuel meter.
-- No more "LiberationSans SDF Font Asset was not found" warnings in the log when
-  the panel builds.
-
 ## v1.0.0
 
 - First release, for Valheim 1.0.7 and BepInEx 5.4.2350.
@@ -31,3 +21,5 @@ All notable changes to OttoLens.
 - Build piece status shows with the hammer out by default. `BuildPieces` can be
   `Off`, `WithHammer` or `Always`.
 - `H` toggles the panel in game. Change or disable it with `ToggleKey`.
+- Lens dirt is off by default, because the Eye of Odin makes all things clear.
+  `RemoveLensDirt` brings it back.
