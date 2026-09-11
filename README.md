@@ -128,6 +128,7 @@ renders on the Changelog tab of the Thunderstore package page.
 
 ## Credits
 
-OttoLens is written and maintained by Paul Otto. I wrote every reader against
-the game's own behaviour in 1.0.7, and the only dependency is the BepInEx pack,
-which brings Harmony with it. MIT licence.
+OttoLens is written and maintained by Paul Otto. I wrote every reader from
+scratch against the game's own behaviour in 1.0.7, and no code in it is taken
+from any other mod. The only dependency is the BepInEx pack, which brings
+Harmony with it. MIT licence.
