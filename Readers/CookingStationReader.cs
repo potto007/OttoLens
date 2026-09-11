@@ -181,16 +181,18 @@ internal sealed class CookingStationReader : ILensReader
         {
             int maxFuel = Mathf.Max(station.m_maxFuel, 1);
             float fraction = Mathf.Clamp01(fuel / maxFuel);
-            string value = LensFormat.Count(fuel, maxFuel);
-            if (fuel > 0f)
-            {
-                value = value + " " + LensFormat.TimeWithDays(fuel * station.m_secPerFuel);
-            }
-
             string label = station.m_fuelItem != null ? LensFormat.Name(station.m_fuelItem.m_itemData.m_shared.m_name) : "Fuel";
-            report.PrimaryMeter = LensReport.Meter(label, fraction, value, LensFormat.Ramp(fraction));
-            report.Secondary1 = next;
-            report.Secondary2 = burns;
+            // Count only beside the meter, as on the fireplace: the value column is 84 wide and
+            // a time with days overflows left across the bar. The time takes its own row.
+            report.PrimaryMeter = LensReport.Meter(label, fraction, LensFormat.Count(fuel, maxFuel), LensFormat.Ramp(fraction));
+
+            // "Burns" is taken by the food warning here. Next and Burns are the actionable
+            // rows, so the fuel time fills whichever secondary row they leave free.
+            LensMeter? fuelTime = fuel > 0f
+                ? LensReport.Meter("Fuel", null, LensFormat.TimeWithDays(fuel * station.m_secPerFuel), LensColor.Gold, drains: true)
+                : null;
+            report.Secondary1 = next ?? burns ?? fuelTime;
+            report.Secondary2 = next != null ? burns ?? fuelTime : burns != null ? fuelTime : null;
         }
         else
         {
