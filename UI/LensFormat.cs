@@ -9,6 +9,12 @@ public static class LensFormat
 {
     private static readonly Dictionary<string, string> NameCache = new(StringComparer.Ordinal);
     private static readonly CultureInfo Culture = CultureInfo.InvariantCulture;
+    // NameCache holds Localize() output, which changes when the player switches language in the
+    // settings menu. That does not destroy the Hud, so ClearCaches() would only catch it on world
+    // unload. Localization.SetLanguage fires the static OnLanguageChange (assembly_guiutils 1.0.7)
+    // and vanilla relocalizes off the same signal, so hook it once on first use and never detach:
+    // the handler is static, so it keeps nothing alive and stays correct across worlds.
+    private static bool _languageHooked;
 
     /// Absolute short time: m:ss under 10 minutes, Xm Ys under an hour, Xh Ym above,
     /// "Ready" at or below zero. Never a percent.
@@ -89,6 +95,12 @@ public static class LensFormat
         if (string.IsNullOrEmpty(token))
         {
             return "";
+        }
+
+        if (!_languageHooked)
+        {
+            _languageHooked = true;
+            Localization.OnLanguageChange += ClearCaches;
         }
 
         if (NameCache.TryGetValue(token!, out string cached))

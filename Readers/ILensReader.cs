@@ -9,8 +9,10 @@ public interface ILensReader
     /// The vanilla component this reader handles (typeof(Container), typeof(Smelter), ...).
     Type TargetType { get; }
 
-    /// Config gate for the target group. Checked before any component walk, so a disabled
-    /// group costs one bool read per frame.
+    /// Config gate for the target group. Checked before the component walk, so a disabled group
+    /// costs one bool read per hover - except for the readers that shadow a later reader on a
+    /// shared component, which the registry still walks so a closed gate shows nothing rather
+    /// than deferring the target down the list.
     bool Enabled { get; }
 
     /// Return null to show nothing. target is the resolved component of TargetType; hover is

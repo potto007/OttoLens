@@ -2,9 +2,12 @@ using OttoLens.Model;
 
 namespace OttoLens.Readers;
 
-/// Standing tree (TreeBase) or felled log (TreeLog). Neither is hoverable, so the core's tree
-/// raycast hands us the collider object. One instance per type; both read the same shape:
-/// a float under ZDOVars.s_health defaulting to the world level scaled maximum (spec 3.12).
+/// Standing tree (TreeBase) or felled log (TreeLog). Neither is hoverable, but Player's own
+/// hover ray still hands us the collider object. One instance per type; both read a float under
+/// ZDOVars.s_health (spec 3.12), but their pools differ. TreeLog writes the world level scaled
+/// maximum into the ZDO at Awake, so it matches Destructible. TreeBase applies the scaling only
+/// in its Awake destroy check: RPC_Damage reads s_health with the unscaled m_health as its
+/// default and stores the result, so a standing tree's real pool is m_health.
 internal sealed class TreeReader : ILensReader
 {
     private readonly LensReport _report = new();
@@ -23,20 +26,20 @@ internal sealed class TreeReader : ILensReader
     public LensReport? Read(Component target, GameObject hover)
     {
         ZNetView view;
-        float baseHealth;
+        float max;
         int minToolTier;
         if (_logs)
         {
             var log = (TreeLog)target;
             view = log.m_nview;
-            baseHealth = log.m_health;
+            max = DestructibleReader.ScaledMax(log.m_health);
             minToolTier = log.m_minToolTier;
         }
         else
         {
             var tree = (TreeBase)target;
             view = tree.m_nview;
-            baseHealth = tree.m_health;
+            max = tree.m_health;
             minToolTier = tree.m_minToolTier;
         }
 
@@ -45,7 +48,6 @@ internal sealed class TreeReader : ILensReader
             return null;
         }
 
-        float max = DestructibleReader.ScaledMax(baseHealth);
         float current = view.GetZDO().GetFloat(ZDOVars.s_health, max);
         if (max <= 0f || current <= 0f)
         {

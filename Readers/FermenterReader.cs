@@ -62,7 +62,7 @@ internal sealed class FermenterReader : ILensReader
 
         float fraction = duration > 0f ? Mathf.Clamp01(remaining / duration) : 0f;
         LensColor color = ready ? LensColor.Good : stalled ? LensColor.Warn : LensColor.Gold;
-        report.PrimaryMeter = LensReport.Meter("Next", fraction, LensFormat.Time(remaining), color, drains: true);
+        report.PrimaryMeter = LensReport.Meter("Next", fraction, LensFormat.TimeWithDays(remaining), color, drains: true);
 
         // A barrel holding a removed recipe has no conversion; vanilla null checks this too.
         Fermenter.ItemConversion? conversion = fermenter.GetItemConversion(content);
@@ -96,10 +96,12 @@ internal sealed class FermenterReader : ILensReader
         return new LensItem(GetSprite(drop.gameObject.name, data), LensFormat.Name(data.m_shared.m_name), count);
     }
 
+    // The cache outlives a world unload: a destroyed sprite reads as Unity null and is fetched
+    // again, so a stale entry cannot hand the panel a fake-null sprite that blanks the row art.
     private static Sprite? GetSprite(string prefabName, ItemDrop.ItemData data)
     {
         int key = prefabName.GetStableHashCode();
-        if (SpriteCache.TryGetValue(key, out Sprite? cached))
+        if (SpriteCache.TryGetValue(key, out Sprite? cached) && cached != null)
         {
             return cached;
         }

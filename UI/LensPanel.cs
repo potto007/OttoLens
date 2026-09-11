@@ -90,6 +90,9 @@ internal sealed class LensPanel : MonoBehaviour
 
     internal static void RequestRebuild() => _rebuildRequested = true;
 
+    /// Design section 7: a master switch flip destroys the root and releases nothing else.
+    /// The probed sprites are vanilla-owned and outlive the panel, so keeping the cache means
+    /// a toggle back on rebuilds the tree without re-running the whole-heap sprite scan.
     internal static void Destroy()
     {
         LensPanel? panel = Instance;
@@ -99,7 +102,12 @@ internal sealed class LensPanel : MonoBehaviour
             // Rows die with the root; no other references are held past this point.
             UnityEngine.Object.Destroy(panel.gameObject);
         }
+    }
 
+    /// World unload: the probed sprites die with the scene, so the cache goes with them.
+    internal static void Release()
+    {
+        Destroy();
         SpriteCache.Clear();
         _probed = false;
     }
@@ -123,9 +131,19 @@ internal sealed class LensPanel : MonoBehaviour
 
         if (ReferenceEquals(target, _target))
         {
+            bool hoverChanged = !ReferenceEquals(hover, _hover);
+            _hover = hover;
+            _reader = reader;
             // Hidden for lack of content: retry at the tick rate, not every frame.
             if (_visible || Time.unscaledTime < _nextRetry)
             {
+                // Hover collider changed on the same target (e.g. different MineRock5 hit area):
+                // update values immediately so the next frame shows the right health rather than
+                // waiting for the next tick.
+                if (hoverChanged && _visible)
+                {
+                    Refresh();
+                }
                 return;
             }
 
@@ -208,10 +226,11 @@ internal sealed class LensPanel : MonoBehaviour
         int totalTypes = (report.Block0?.Items.Count ?? 0) + (report.Block1?.Items.Count ?? 0);
         int rowBudget = RowBudget(statusCount, blocks, totalTypes, out bool overflowPossible);
 
+        // Design section 7: maxRows is a per-block cap, so each block gets the whole budget.
+        // A shared running remainder let block 0 starve block 1, hiding the output rows.
         int hidden = 0;
-        int used = 0;
-        used += _blocks[0].Apply(report.Block0, rowBudget - used, showNames, ref hidden);
-        used += _blocks[1].Apply(report.Block1, rowBudget - used, showNames, ref hidden);
+        _blocks[0].Apply(report.Block0, rowBudget, showNames, ref hidden);
+        _blocks[1].Apply(report.Block1, rowBudget, showNames, ref hidden);
 
         bool showOverflow = hidden > 0 && overflowPossible;
         bool showFooter = !string.IsNullOrEmpty(report.Footer);
@@ -236,8 +255,10 @@ internal sealed class LensPanel : MonoBehaviour
         _footer.SetText(report.Footer ?? "");
     }
 
-    /// Design section 2: rows shown = min(maxRows, rowsFit); the overflow line is dropped
-    /// when the types count is exactly maxRows + 1, because the line costs a row anyway.
+    /// Design section 2: rows shown per block = min(maxRows, this block's share of rowsFit);
+    /// the overflow line is dropped when the types count is exactly maxRows + 1, because the
+    /// line costs a row anyway. The screen budget covers every block, so it is split between
+    /// the blocks that have rows while maxRows stays a per-block cap.
     private int RowBudget(int statusCount, int blocks, int totalTypes, out bool overflowPossible)
     {
         int maxRows = Mathf.Clamp(OttoLensPlugin.MaxRows.Value, 1, ItemRowsPerBlock);
@@ -259,9 +280,14 @@ internal sealed class LensPanel : MonoBehaviour
         float offsetY = Mathf.Min(OttoLensPlugin.OffsetY.Value, -16);
         float scale = Mathf.Clamp(OttoLensPlugin.GuiScale.Value, 0.75f, 1.6f);
         int rowsFit = Mathf.FloorToInt((offsetY + canvasHeight / 2f - 24f - fixedHeight * scale) / (ItemRowStride * scale));
-        int shown = Mathf.Max(1, Mathf.Min(maxRows, rowsFit));
+        int share = blocks > 1 ? rowsFit / blocks : rowsFit;
+        int shown = Mathf.Max(1, Mathf.Min(maxRows, share));
 
-        if (totalTypes == maxRows + 1 && rowsFit >= totalTypes)
+        // Skip the overflow line only when the extra type actually fits without hitting
+        // the per-block row cap. When totalTypes would exceed ItemRowsPerBlock, a block
+        // silently clamps to 16 rows, hiding one item with no footer; fall through so
+        // overflowPossible stays true and the "and N more" line is shown correctly.
+        if (totalTypes == maxRows + 1 && rowsFit >= totalTypes && totalTypes <= ItemRowsPerBlock)
         {
             overflowPossible = false;
             return totalTypes;

@@ -15,7 +15,10 @@ internal sealed class TameableReader : ILensReader
 
     private readonly LensReport _report = new();
     private readonly LensItemBlock _block = new();
-    private readonly Dictionary<long, StandItem> _standItems = new();
+    // Static so the registry's single reader instance is not the only thing that can clear it:
+    // the names come from LensFormat.Name, so they go stale on a language change and are dropped
+    // through LensReaders.ClearLocalizedCaches.
+    private static readonly Dictionary<long, StandItem> StandItems = new();
 
     public Type TargetType => typeof(Tameable);
 
@@ -184,12 +187,16 @@ internal sealed class TameableReader : ILensReader
         report.Block0 = block;
     }
 
+    /// Drops the cached stand item names and sprites. Called on a language change and on
+    /// Hud.OnDestroy through LensReaders.ClearLocalizedCaches.
+    internal static void ClearStandItems() => StandItems.Clear();
+
     private StandItem? Resolve(int hash, int variant)
     {
         long key = ((long)hash << 32) | (uint)variant;
         // A sprite that is C# null never existed; one that is only Unity null was destroyed
         // with its scene and is resolved again.
-        if (_standItems.TryGetValue(key, out StandItem cached) && (cached.Sprite is null || cached.Sprite != null))
+        if (StandItems.TryGetValue(key, out StandItem cached) && (cached.Sprite is null || cached.Sprite != null))
         {
             return cached;
         }
@@ -221,7 +228,7 @@ internal sealed class TameableReader : ILensReader
             item.Sprite = null;
         }
 
-        _standItems[key] = item;
+        StandItems[key] = item;
         return item;
     }
 }

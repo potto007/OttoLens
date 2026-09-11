@@ -50,6 +50,17 @@ internal sealed class SmelterReader : ILensReader
         bool needsRoof = smelter.m_requiresRoof && !smelter.m_haveRoof;
         bool active = smelter.IsActive();
 
+        // UpdateSmelter scales its bake step by the windmill power output, so a becalmed or
+        // covered mill advances neither the bake timer nor the fuel. IsActive() does not look
+        // at wind, so the stop has to be detected here or the countdowns would count nothing.
+        float power = 1f;
+        bool becalmed = false;
+        if (smelter.m_windmill != null)
+        {
+            power = smelter.m_windmill.GetPowerOutput();
+            becalmed = power <= 0f;
+        }
+
         LensReport report = _report;
         report.Reset();
         report.Title = LensFormat.Name(smelter.m_name);
@@ -57,8 +68,8 @@ internal sealed class SmelterReader : ILensReader
         // Headline: the reason it is not running wins over the running word.
         if (active)
         {
-            report.Headline = "SMELTING";
-            report.HeadlineColor = LensColor.Gold;
+            report.Headline = becalmed ? "NO WIND" : "SMELTING";
+            report.HeadlineColor = becalmed ? LensColor.Warn : LensColor.Gold;
         }
         else if (maxFuel > 0 && fuel <= 0f)
         {
@@ -103,18 +114,9 @@ internal sealed class SmelterReader : ILensReader
         }
 
         // Countdowns only while the owner is ticking the bake timer (spec 3.3 edge cases).
-        if (active && queued > 0 && smelter.m_secPerProduct > 0f)
+        // A becalmed windmill smelter is one of those stops: no figure is honest there.
+        if (active && !becalmed && queued > 0 && smelter.m_secPerProduct > 0f)
         {
-            float power = 1f;
-            if (smelter.m_windmill != null)
-            {
-                float output = smelter.m_windmill.GetPowerOutput();
-                if (output > 0f)
-                {
-                    power = output;
-                }
-            }
-
             float nextSeconds = Mathf.Max(0f, smelter.m_secPerProduct - bakeTimer) / power;
             float queueSeconds = Mathf.Max(0f, queued * smelter.m_secPerProduct - bakeTimer) / power;
 
@@ -226,9 +228,11 @@ internal sealed class SmelterReader : ILensReader
         return null;
     }
 
+    // The cache outlives a world unload: a destroyed sprite reads as Unity null and is fetched
+    // again, so a stale entry cannot hand the panel a fake-null sprite that blanks the row art.
     private Sprite? GetSprite(string prefabName, ItemDrop? drop)
     {
-        if (_sprites.TryGetValue(prefabName, out Sprite? cached))
+        if (_sprites.TryGetValue(prefabName, out Sprite? cached) && cached != null)
         {
             return cached;
         }

@@ -169,7 +169,7 @@ internal sealed class CookingStationReader : ILensReader
             string value = LensFormat.Count(fuel, maxFuel);
             if (fuel > 0f)
             {
-                value = value + " " + LensFormat.Time(fuel * station.m_secPerFuel);
+                value = value + " " + LensFormat.TimeWithDays(fuel * station.m_secPerFuel);
             }
 
             string label = station.m_fuelItem != null ? LensFormat.Name(station.m_fuelItem.m_itemData.m_shared.m_name) : "Fuel";
@@ -246,9 +246,11 @@ internal sealed class CookingStationReader : ILensReader
         return null;
     }
 
+    // The cache outlives a world unload: a destroyed sprite reads as Unity null and is fetched
+    // again, so a stale entry cannot hand the panel a fake-null sprite that blanks the row art.
     private static Sprite? GetSprite(string prefabName, ItemDrop? drop)
     {
-        if (SpriteCache.TryGetValue(prefabName, out Sprite? cached))
+        if (SpriteCache.TryGetValue(prefabName, out Sprite? cached) && cached != null)
         {
             return cached;
         }

@@ -1679,6 +1679,13 @@ Do not call these from a hover reader. Each writes to a ZDO or mutates state.
    and `SapCollector.UpdateEffects`. These drive visuals and effects.
 4. `Container.StackAll`, `Container.TakeAll`, and every method that begins with
    `RPC_`.
+5. `CraftingStation.GetLevel()`, `CraftingStation.GetExtentionCount(true)`, and
+   `CraftingStation.GetStationBuildRange`. All three reach
+   `CraftingStation.GetExtensions`, which every two seconds clears and rebuilds
+   `m_attachedExtensions`, resets the station's own `m_updateExtensionTimer`,
+   recomputes `m_buildRange`, and writes the radius of the live effect area
+   collider and of the area marker circle. Vanilla never runs this from a hover.
+   Pass `checkExtensions: false`, which only reads `m_attachedExtensions.Count`.
 
 Read the ZDO values directly instead. The read only getters are safe:
 `Smelter.GetFuel`, `Smelter.GetQueueSize`, `Smelter.GetQueuedOre`,

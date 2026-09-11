@@ -8,6 +8,13 @@ internal static class LensReaders
     private static readonly List<ILensReader> Readers = new();
     private static bool _registered;
     private static string? _noAccessText;
+    // _noAccessText holds Localize() output, which changes when the player switches language in
+    // the settings menu. Localization.SetLanguage fires the static OnLanguageChange
+    // (assembly_guiutils 1.0.7), so hook it once when the string is first cached and never
+    // detach, the same way LensFormat guards its name cache. Without this the EndsWith test in
+    // PassesCoreGuards compares the new language's hover text against the old language's string
+    // and can never match again, leaving the no access guard of spec 6.1.3 dead for the session.
+    private static bool _languageHooked;
 
     internal static IReadOnlyList<ILensReader> All
     {
@@ -66,6 +73,13 @@ internal static class LensReaders
             ILensReader candidate = Readers[i];
             if (!candidate.Enabled)
             {
+                // A shadowing reader that is gated off has to suppress its target, not hand it
+                // down the list, so it still pays one component walk while disabled.
+                if (Shadows(candidate) && hover.GetComponentInParent(candidate.TargetType) != null)
+                {
+                    break;
+                }
+
                 continue;
             }
 
@@ -82,6 +96,14 @@ internal static class LensReaders
         target = null!;
         return false;
     }
+
+    /// Readers that sit this high in the list only to win the race for a component a later
+    /// reader also claims: TombStone.Awake puts the grave's Container on the grave itself, and a
+    /// pet piece carries the ItemStand its Tameable reads. For these the group gate means "show
+    /// nothing", never "let the next reader have it" - misc off would otherwise turn every grave
+    /// into a container plate listing a dead player's whole inventory, the output TombStoneReader
+    /// exists to prevent, and creatures off would turn a pet into an item stand.
+    private static bool Shadows(ILensReader reader) => reader is TombStoneReader or TameableReader;
 
     /// Guards the core applies before Read runs: placement ghost (spec 6.1.5), a ZNetView
     /// that is invalid or has no ZDO (spec 6.1.4), and a vanilla hover text that ended in the
@@ -103,7 +125,17 @@ internal static class LensReaders
 
         if (hoverText.Length > 0)
         {
-            _noAccessText ??= Localization.instance.Localize("$piece_noaccess");
+            if (_noAccessText == null)
+            {
+                if (!_languageHooked)
+                {
+                    _languageHooked = true;
+                    Localization.OnLanguageChange += ClearLocalizedCaches;
+                }
+
+                _noAccessText = Localization.instance.Localize("$piece_noaccess");
+            }
+
             if (_noAccessText.Length > 0 && hoverText.EndsWith(_noAccessText, StringComparison.Ordinal))
             {
                 return false;
@@ -111,6 +143,15 @@ internal static class LensReaders
         }
 
         return true;
+    }
+
+    /// Drops every piece of localized text the readers memoize: the no access string above and
+    /// the pet stand item names. Runs on a language change and from Hud.OnDestroy, which is the
+    /// same pair LensFormat.ClearCaches covers for the name cache.
+    internal static void ClearLocalizedCaches()
+    {
+        _noAccessText = null;
+        TameableReader.ClearStandItems();
     }
 
     /// Ward access without the flash (spec 3.0). Readers for pieces that vanilla ward-checks

@@ -22,7 +22,7 @@ internal sealed class MineRockReader : ILensReader
 
     public Type TargetType => _legacy ? typeof(MineRock) : typeof(MineRock5);
 
-    public bool Enabled => OttoLensPlugin.ShowTreesAndRocks.Value;
+    public bool Enabled => OttoLensPlugin.ShowMineables.Value;
 
     public LensReport? Read(Component target, GameObject hover)
         => _legacy ? ReadLegacy((MineRock)target, hover) : ReadRock5((MineRock5)target, hover);

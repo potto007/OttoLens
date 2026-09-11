@@ -46,10 +46,12 @@ internal sealed class PlantReader : ILensReader
             return report;
         }
 
-        // An unhealthy plant does not finish, so no countdown: progress only.
+        // An unhealthy plant does not finish. Spec 3.8 item 2: omit fraction so
+        // the elapsed/growTime ratio (which keeps climbing even for a crowded plant)
+        // is never rendered as a progress bar.
         report.Headline = StatusWord(status);
         report.HeadlineColor = LensColor.Warn;
-        report.PrimaryMeter = LensReport.Meter("Grown", fraction, LensFormat.Percent(fraction), LensColor.Bad);
+        report.PrimaryMeter = LensReport.Meter("Status", null, StatusWord(status), LensColor.Bad);
         return report;
     }
 

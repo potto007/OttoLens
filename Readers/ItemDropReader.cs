@@ -26,7 +26,10 @@ internal sealed class ItemDropReader : ILensReader
             return null;
         }
 
-        // Vanilla GetHoverText already ran Load() this frame, so m_itemData is current.
+        // Vanilla GetHoverText calls Load() before reading m_itemData, but Hud.UpdateCrosshair
+        // skips GetHoverText while TextViewer is visible. Call Load() here so the panel tick
+        // coroutine and the TextViewer gap both see a current stack count.
+        drop.Load();
         ItemDrop.ItemData data = drop.m_itemData;
         if (data == null || data.m_shared == null)
         {
@@ -60,10 +63,12 @@ internal sealed class ItemDropReader : ILensReader
         return report;
     }
 
+    // The cache outlives a world unload: a destroyed sprite reads as Unity null and is fetched
+    // again, so a stale entry cannot hand the panel a fake-null sprite that blanks the row art.
     private static Sprite? Icon(ItemDrop.ItemData item, string token)
     {
         string key = item.m_variant > 0 ? token + "#" + item.m_variant : token;
-        if (IconCache.TryGetValue(key, out Sprite? cached))
+        if (IconCache.TryGetValue(key, out Sprite? cached) && cached != null)
         {
             return cached;
         }

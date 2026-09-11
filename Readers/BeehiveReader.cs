@@ -11,6 +11,16 @@ internal sealed class BeehiveReader : ILensReader
     private readonly LensReport _report = new();
     private readonly LensItemBlock _output = new();
 
+    // CheckBiome costs a Heightmap.FindBiome and HaveFreeSpace costs a 100 m spherecast plus
+    // seventeen 30 m raycasts through Cover.GetCoverForPoint. Vanilla pays that once per ten
+    // seconds from UpdateBees; the panel would pay it at refreshHz. Hold the pair for a
+    // couple of seconds per hive so a resting crosshair costs nothing (spec 6.4 rule 7).
+    private const float StateCacheSeconds = 2f;
+    private Beehive? _cachedHive;
+    private float _cachedUntil;
+    private bool _cachedBiomeOk;
+    private bool _cachedSpaceOk;
+
     public Type TargetType => typeof(Beehive);
 
     public bool Enabled => OttoLensPlugin.ShowFermenting.Value;
@@ -35,8 +45,7 @@ internal sealed class BeehiveReader : ILensReader
         bool full = max > 0 && honey >= max;
 
         // Same order vanilla uses: biome, then cover, then daylight, otherwise happy.
-        bool biomeOk = hive.CheckBiome();
-        bool spaceOk = biomeOk && hive.HaveFreeSpace();
+        ReadState(hive, out bool biomeOk, out bool spaceOk);
         bool working = biomeOk && spaceOk;
         bool asleep = working && hive.m_effectOnlyInDaylight && !EnvMan.IsDaylight();
 
@@ -97,10 +106,29 @@ internal sealed class BeehiveReader : ILensReader
         return report;
     }
 
+    /// Biome and cover for one hive, recomputed at most once per StateCacheSeconds. One slot:
+    /// only one hive is hovered at a time, and switching hives just recomputes once.
+    private void ReadState(Beehive hive, out bool biomeOk, out bool spaceOk)
+    {
+        float now = Time.unscaledTime;
+        if (!ReferenceEquals(hive, _cachedHive) || now >= _cachedUntil)
+        {
+            _cachedHive = hive;
+            _cachedUntil = now + StateCacheSeconds;
+            _cachedBiomeOk = hive.CheckBiome();
+            _cachedSpaceOk = _cachedBiomeOk && hive.HaveFreeSpace();
+        }
+
+        biomeOk = _cachedBiomeOk;
+        spaceOk = _cachedSpaceOk;
+    }
+
+    // The cache outlives a world unload: a destroyed sprite reads as Unity null and is fetched
+    // again, so a stale entry cannot hand the panel a fake-null sprite that blanks the row art.
     private static Sprite? GetSprite(string prefabName, ItemDrop.ItemData data)
     {
         int key = prefabName.GetStableHashCode();
-        if (SpriteCache.TryGetValue(key, out Sprite? cached))
+        if (SpriteCache.TryGetValue(key, out Sprite? cached) && cached != null)
         {
             return cached;
         }

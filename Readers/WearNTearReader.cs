@@ -11,7 +11,15 @@ internal sealed class WearNTearReader : ILensReader
 
     public Type TargetType => typeof(WearNTear);
 
-    public bool Enabled => OttoLensPlugin.ShowBuildPieces.Value;
+    // Off never reads; WithHammer is the default because a plain wall is a hover target in its
+    // own right (Player.FindHoverObject takes the first hit collider, Hoverable or not), so
+    // Always would pop a panel on every wall the player walks past.
+    public bool Enabled => OttoLensPlugin.ShowBuildPieces.Value switch
+    {
+        OttoLensPlugin.PieceStatus.Always => true,
+        OttoLensPlugin.PieceStatus.WithHammer => Player.m_localPlayer != null && Player.m_localPlayer.InPlaceMode(),
+        _ => false,
+    };
 
     public LensReport? Read(Component target, GameObject hover)
     {
@@ -65,9 +73,9 @@ internal sealed class WearNTearReader : ILensReader
         if (showHealth)
         {
             LensColor color = LensFormat.Ramp(healthFraction);
-            report.Headline = LensFormat.Percent(healthFraction);
+            report.Headline = WearWord(healthFraction);
             report.HeadlineColor = color;
-            report.PrimaryMeter = LensReport.Meter("Health", healthFraction, LensFormat.Count(health, (int)maxHealth), color);
+            report.PrimaryMeter = LensReport.Meter("Health", healthFraction, LensFormat.Percent(healthFraction), color);
             report.Secondary1 = support;
         }
         else
@@ -75,7 +83,19 @@ internal sealed class WearNTearReader : ILensReader
             report.PrimaryMeter = support;
         }
 
+        // Shape-only signature: structural changes (target swap, row presence) drive Rebuild;
+        // per-tick values (percent, wear word) update through Tick without layout work.
+        report.ContentSignature = string.Concat(report.Title, "|", showHealth ? "h" : "", "|", support.HasValue ? "s" : "");
+
         return report;
+    }
+
+    // Spec 3.10: new above 0.75, worn above 0.25, broken at or below 0.25.
+    private static string WearWord(float healthFraction)
+    {
+        if (healthFraction > 0.75f) return "New";
+        if (healthFraction > 0.25f) return "Worn";
+        return "Broken";
     }
 
     private static string TitleFor(WearNTear wear, GameObject hover)

@@ -3,8 +3,8 @@ using OttoLens.Model;
 namespace OttoLens.Readers;
 
 /// Chest, cart and ship hold (spec 3.1). Primary meter is slot usage, block 0 is the grouped
-/// contents, footer is the free slot count. Grouping is cached per container on the ZDO data
-/// revision because a chest hover holds still for seconds at a time.
+/// contents, footer is the free slot count. Grouping is cached per container on the revision
+/// the inventory was loaded from, because a chest hover holds still for seconds at a time.
 internal sealed class ContainerReader : ILensReader
 {
     private const string HiddenFooter = "Contents unknown";
@@ -16,9 +16,13 @@ internal sealed class ContainerReader : ILensReader
     private readonly Dictionary<string, LensItem> _groupIndex = new(StringComparer.Ordinal);
     private readonly List<LensItem> _groups = new();
 
-    // Cache key for the grouped list. The item count rides along with the revision because a
-    // chest that just came into view deserializes its inventory up to a second after the ZDO
-    // arrives, without moving the revision.
+    // Cache key for the grouped list. The revision is Container.m_lastRevision, not
+    // ZDO.DataRevision: m_lastRevision is the revision the inventory was actually deserialized
+    // from (Container.Load sets it, Container.Save sets it on the owner), while DataRevision
+    // moves as soon as the ZDO arrives and the 1 s CheckForChanges tick reloads m_inventory up
+    // to a second later. Keying on DataRevision would cache a group list built from the stale
+    // inventory and never invalidate it when the counts change without the slot count moving.
+    // The item count rides along as a cheap second guard.
     private Container? _cachedContainer;
     private uint _cachedRevision;
     private int _cachedCount = -1;
@@ -27,6 +31,11 @@ internal sealed class ContainerReader : ILensReader
     // Hash of the vanilla "Discovered_<player>" ZDO flag, rebuilt only when the name changes.
     private static string? _discoveredName;
     private static int _discoveredHash;
+
+    // Session record of world chests the player has opened (spec 5.3 item 5, spec 5.4 item 4).
+    // Covers containers that carry no m_discoverStat and so never get the vanilla ZDO flag.
+    // Cleared by ClearOpenedChests() on world unload (Hud.OnDestroy).
+    private static readonly HashSet<ZDOID> _openedChests = new();
 
     public Type TargetType => typeof(Container);
 
@@ -104,7 +113,7 @@ internal sealed class ContainerReader : ILensReader
             report.HeadlineColor = LensColor.Bad;
         }
 
-        uint revision = zdo.DataRevision;
+        uint revision = container.m_lastRevision;
         if (!ReferenceEquals(container, _cachedContainer) || revision != _cachedRevision || used != _cachedCount)
         {
             Regroup(inventory);
@@ -126,34 +135,62 @@ internal sealed class ContainerReader : ILensReader
     }
 
     /// A chest the world placed keeps its contents hidden until the player has opened it.
-    /// Vanilla records that opening in the ZDO under "Discovered_<player>" only when the
-    /// prefab has a discover stat; chests without one cannot be tracked, so they show.
+    /// Fast path: chests with a discover stat use the persistent "Discovered_<player>" ZDO flag
+    /// that vanilla writes in Container.Interact (lines 235-240). This survives a relog.
+    /// Fallback: chests without a discover stat (modded or non-tracked loot containers) use the
+    /// session record in _openedChests, written by the InventoryGui.Show postfix.
     private static bool IsUnopenedWorldChest(Container container, ZDO zdo, Player player)
     {
+        if (!OttoLensPlugin.HideUnopenedWorldChests.Value)
+        {
+            return false;
+        }
+
         Piece piece = container.m_piece;
         if (piece != null && piece.IsPlacedByPlayer())
         {
             return false;
         }
 
-        if (container.m_discoverStat == PlayerStatType.None)
+        if (container.m_discoverStat != PlayerStatType.None)
         {
-            return false;
+            string name = player.GetPlayerName();
+            if (!string.Equals(name, _discoveredName, StringComparison.Ordinal))
+            {
+                _discoveredName = name;
+                _discoveredHash = ("Discovered_" + name).GetStableHashCode();
+            }
+            return !zdo.GetBool(_discoveredHash);
         }
 
-        string name = player.GetPlayerName();
-        if (!string.Equals(name, _discoveredName, StringComparison.Ordinal))
-        {
-            _discoveredName = name;
-            _discoveredHash = ("Discovered_" + name).GetStableHashCode();
-        }
-
-        return !zdo.GetBool(_discoveredHash);
+        // No discover stat: hide until the session record says the player has opened it.
+        return !_openedChests.Contains(zdo.m_uid);
     }
 
-    // Group by shared name, sum stacks, sort by count descending then name so the order is
-    // stable frame to frame. Every vanilla item defaults to m_quality 1, so 1 maps to 0 (no
-    // upgrade) like ItemDropReader; the group keeps the highest upgrade level.
+    /// Called from the InventoryGui.Show postfix to record that a world chest has been opened.
+    internal static void RecordOpen(Container container)
+    {
+        ZNetView? view = container.m_nview;
+        if (view == null || !view.IsValid())
+        {
+            return;
+        }
+        ZDO? zdo = view.GetZDO();
+        if (zdo != null)
+        {
+            _openedChests.Add(zdo.m_uid);
+        }
+    }
+
+    /// Called from HudDestroyPostfix to clear the session record on world unload (spec 5.3 item 5).
+    internal static void ClearOpenedChests() => _openedChests.Clear();
+
+    // Group by shared name and sum stacks, keeping first-appearance order, which is the
+    // container's own slot order. Row order belongs to the panel (design section 7): sorting
+    // here as well would make `sortRows = slot` indistinguishable from `count`, because
+    // LensPanel.ItemBlockView.Apply only reorders for `count` and otherwise keeps this order.
+    // Every vanilla item defaults to m_quality 1, so 1 maps to 0 (no upgrade) like
+    // ItemDropReader; the group keeps the highest upgrade level.
     private void Regroup(Inventory inventory)
     {
         _groupIndex.Clear();
@@ -186,21 +223,16 @@ internal sealed class ContainerReader : ILensReader
             _groupIndex[token] = created;
             _groups.Add(created);
         }
-
-        _groups.Sort(CompareGroups);
-    }
-
-    private static int CompareGroups(LensItem a, LensItem b)
-    {
-        int byCount = b.Count.CompareTo(a.Count);
-        return byCount != 0 ? byCount : string.CompareOrdinal(a.Name, b.Name);
     }
 
     // Icons are per variant (capes, shields), so the cache key carries the variant index.
+    // A destroyed sprite reads as Unity null and is probed again: the cache outlives a world
+    // unload, and a stale entry would hand the panel a fake-null sprite that silently disables
+    // the row art for the rest of the session.
     private static Sprite? Icon(ItemDrop.ItemData item, string token)
     {
         string key = item.m_variant == 0 ? token : string.Concat(token, "#", item.m_variant.ToString());
-        if (IconCache.TryGetValue(key, out Sprite? cached))
+        if (IconCache.TryGetValue(key, out Sprite? cached) && cached != null)
         {
             return cached;
         }

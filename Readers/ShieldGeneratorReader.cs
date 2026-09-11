@@ -65,9 +65,10 @@ internal sealed class ShieldGeneratorReader : ILensReader
                 float chargeTime = generator.m_attackChargeTime;
                 float elapsed = (float)(ZNet.instance.GetTime() - new DateTime(startTicks)).TotalSeconds;
                 float remaining = chargeTime - elapsed;
-                float charge = chargeTime > 0f ? Mathf.Clamp01(elapsed / chargeTime) : 1f;
+                // The row drains, so the bar carries the remaining fraction and falls with the text.
+                float fraction = chargeTime > 0f ? Mathf.Clamp01(Mathf.Max(remaining, 0f) / chargeTime) : 0f;
                 bool ready = remaining <= 0f;
-                report.Secondary1 = LensReport.Meter("Next", charge, LensFormat.Time(remaining), ready ? LensColor.Good : LensColor.Gold, drains: true);
+                report.Secondary1 = LensReport.Meter("Next", fraction, LensFormat.Time(remaining), ready ? LensColor.Good : LensColor.Gold, drains: true);
                 if (ready && fuel > 0f)
                 {
                     report.Headline = "READY";

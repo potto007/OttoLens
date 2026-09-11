@@ -102,10 +102,12 @@ internal sealed class SapCollectorReader : ILensReader
         return report;
     }
 
+    // The cache outlives a world unload: a destroyed sprite reads as Unity null and is fetched
+    // again, so a stale entry cannot hand the panel a fake-null sprite that blanks the row art.
     private static Sprite? GetSprite(string prefabName, ItemDrop.ItemData data)
     {
         int key = prefabName.GetStableHashCode();
-        if (SpriteCache.TryGetValue(key, out Sprite? cached))
+        if (SpriteCache.TryGetValue(key, out Sprite? cached) && cached != null)
         {
             return cached;
         }

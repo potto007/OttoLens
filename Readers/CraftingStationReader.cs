@@ -20,8 +20,22 @@ internal sealed class CraftingStationReader : ILensReader
     private CraftingStation? _cachedStation;
     private Container? _cachedContainer;
 
-    // Grouping cache, keyed on the ZDO revision plus the item count (the inventory can
-    // deserialize up to a second after the revision moves).
+    // CraftingStation.CheckUsable runs Cover.GetCoverForPoint for a roof requiring station:
+    // one 100 m spherecast plus seventeen 30 m raycasts, eighteen physics queries per call.
+    // Vanilla only pays that on an interact or a craft press, never on hover; the panel would
+    // pay it at refreshHz. Hold the verdict for a couple of seconds per station (spec 6.4
+    // rule 7), the same way BeehiveReader.ReadState holds its cover check. Cover changes no
+    // faster than the player builds.
+    private const float RoofCacheSeconds = 2f;
+    private CraftingStation? _roofStation;
+    private float _roofUntil;
+    private bool _roofOk;
+
+    // Grouping cache, keyed on Container.m_lastRevision, not ZDO.DataRevision: m_lastRevision
+    // is the revision the inventory was actually deserialized from, while DataRevision moves as
+    // soon as the ZDO arrives and the 1 s CheckForChanges tick reloads m_inventory up to a
+    // second later (same reasoning as ContainerReader, lines 19-25). The item count is a cheap
+    // second guard.
     private Container? _groupedContainer;
     private uint _groupedRevision;
     private int _groupedCount = -1;
@@ -54,7 +68,7 @@ internal sealed class CraftingStationReader : ILensReader
             report.Headline = "NO FIRE";
             report.HeadlineColor = LensColor.Bad;
         }
-        else if (station.m_craftRequireRoof && station.m_roofCheckPoint != null && !station.CheckUsable(player, showMessage: false))
+        else if (station.m_craftRequireRoof && station.m_roofCheckPoint != null && !HasRoof(station, player))
         {
             report.Headline = "NO ROOF";
             report.HeadlineColor = LensColor.Bad;
@@ -65,7 +79,10 @@ internal sealed class CraftingStationReader : ILensReader
             report.HeadlineColor = LensColor.Good;
         }
 
-        int level = station.GetLevel();
+        // checkExtensions: false keeps this a read. The default true walks GetExtentionCount ->
+        // GetExtensions, which rebuilds m_attachedExtensions, resets the vanilla 2 s refresh
+        // timer and rewrites the station's effect area collider radius (spec 6.2 item 5).
+        int level = station.GetLevel(checkExtensions: false);
         LensMeter levelMeter = LensReport.Meter("Level", null, level.ToString(CultureInfo.InvariantCulture), LensColor.Gold);
 
         Container? container = FindContainer(station);
@@ -98,7 +115,7 @@ internal sealed class CraftingStationReader : ILensReader
         }
 
         List<ItemDrop.ItemData> items = inventory.GetAllItems();
-        uint revision = zdo.DataRevision;
+        uint revision = container.m_lastRevision;
         if (_groupedContainer != container || _groupedRevision != revision || _groupedCount != items.Count)
         {
             _groupedContainer = container;
@@ -132,6 +149,21 @@ internal sealed class CraftingStationReader : ILensReader
         return _cachedContainer;
     }
 
+    /// The roof verdict for one station, recomputed at most once per RoofCacheSeconds. One slot:
+    /// only one station is hovered at a time, and switching stations just recomputes once.
+    private bool HasRoof(CraftingStation station, Player player)
+    {
+        float now = Time.unscaledTime;
+        if (!ReferenceEquals(station, _roofStation) || now >= _roofUntil)
+        {
+            _roofStation = station;
+            _roofUntil = now + RoofCacheSeconds;
+            _roofOk = station.CheckUsable(player, showMessage: false);
+        }
+
+        return _roofOk;
+    }
+
     /// Same denial rules as the chest reader: ward, then the private setting. A locked
     /// container contributes nothing rather than a hint of its contents.
     private static bool CanReadContainer(Container container, Player player)
@@ -152,6 +184,10 @@ internal sealed class CraftingStationReader : ILensReader
         return true;
     }
 
+    /// Group by shared name and sum stacks, keeping first-appearance order, which is the
+    /// container's own slot order. Row order belongs to the panel (design section 7): sorting
+    /// here as well would make `sortRows = slot` indistinguishable from `count`, because
+    /// LensPanel.ItemBlockView.Apply only reorders for `count` and otherwise keeps this order.
     private void Regroup(List<ItemDrop.ItemData> items)
     {
         _groupIndex.Clear();
@@ -175,19 +211,13 @@ internal sealed class CraftingStationReader : ILensReader
             _groupIndex[token] = group;
             _groups.Add(group);
         }
-
-        _groups.Sort(CompareGroups);
     }
 
-    private static int CompareGroups(LensItem a, LensItem b)
-    {
-        int byCount = b.Count.CompareTo(a.Count);
-        return byCount != 0 ? byCount : string.CompareOrdinal(a.Name, b.Name);
-    }
-
+    // The cache outlives a world unload: a destroyed sprite reads as Unity null and is fetched
+    // again, so a stale entry cannot hand the panel a fake-null sprite that blanks the row art.
     private static Sprite? Icon(ItemDrop.ItemData item, string token)
     {
-        if (IconCache.TryGetValue(token, out Sprite? cached))
+        if (IconCache.TryGetValue(token, out Sprite? cached) && cached != null)
         {
             return cached;
         }
