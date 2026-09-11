@@ -28,7 +28,8 @@ meters, and then item rows with the icon, the name and the count.
   or to burnt.
 - **Fermenters, beehives and sap collectors.** Contents, time to ready, and the
   honey or sap level.
-- **Plants and pickables.** Grow progress and respawn timers.
+- **Plants and pickables.** Grow progress, and the item and yield on a live
+  bush. Respawn timers on picked bushes are opt in (`showRespawn`).
 - **Build pieces.** Health and support, with the hammer out by default so the
   panel stays out of the way during normal play.
 - **Rocks, trees and logs.** Health as a fraction. Trees are off by default.
@@ -78,6 +79,7 @@ apply on the next hover. `maxRows` and `showNames` rebuild the panel at once.
 | Targets | `fermenting` | `true` | Fermenters, beehives and sap collectors. |
 | Targets | `plants` | `true` | Planted crops and saplings. |
 | Targets | `pickables` | `true` | Pickable plants and item piles. |
+| Targets | `showRespawn` | `false` | Show the respawn countdown on an already picked pickable. Needs `pickables` on. |
 | Targets | `buildPieces` | `WithHammer` | `Off`, `WithHammer` for place mode only, or `Always` for any hovered piece. |
 | Targets | `mineables` | `true` | Mineable rocks. |
 | Targets | `treesAndRocks` | `false` | Trees, stumps and logs. |

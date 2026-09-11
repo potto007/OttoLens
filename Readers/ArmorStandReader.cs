@@ -48,7 +48,10 @@ internal sealed class ArmorStandReader : ILensReader
         // Sort key packs the type rank above the slot index so equal ranks keep slot order.
         List<int> order = _order;
         order.Clear();
+        // The ZDO hash is the only truth about occupancy: an item whose prefab the database no
+        // longer knows still fills its slot, so it counts here even when no row can be built.
         int occupied = 0;
+        int shown = 0;
         for (int i = 0; i < slotCount; i++)
         {
             int hash = zdo.GetInt(s_itemKeys[i]);
@@ -57,11 +60,14 @@ internal sealed class ArmorStandReader : ILensReader
                 continue;
             }
 
+            occupied++;
             int variant = zdo.GetInt(s_variantKeys[i]);
             string name;
             Sprite? sprite;
             if (!ItemStandReader.TryResolveItem(hash, variant, out name, out sprite, out ItemDrop.ItemData.ItemType type))
             {
+                // SetVisualItem clears m_currentItemName and only refills it from a resolved
+                // prefab, so this is empty for an unknown hash and the slot yields no row.
                 name = slots[i].m_currentItemName;
                 if (name.Length == 0)
                 {
@@ -69,16 +75,16 @@ internal sealed class ArmorStandReader : ILensReader
                 }
             }
 
-            LensItem item = Pooled(occupied);
+            LensItem item = Pooled(shown);
             item.Sprite = sprite;
             item.Name = LensFormat.Name(name);
             item.Count = 1;
             item.Quality = 0;
-            order.Add((Rank(type) << 8) | occupied);
-            occupied++;
+            order.Add((Rank(type) << 8) | shown);
+            shown++;
         }
 
-        if (occupied == 0)
+        if (shown == 0)
         {
             return null;
         }
@@ -91,6 +97,8 @@ internal sealed class ArmorStandReader : ILensReader
 
         LensItemBlock block = _block;
         block.Clear();
+        // The rank sort above is spec 3.14's order; the panel must not re-sort it.
+        block.PreserveOrder = true;
         for (int i = 0; i < order.Count; i++)
         {
             block.Items.Add(_pool[order[i] & 0xFF]);

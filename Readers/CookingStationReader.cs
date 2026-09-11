@@ -45,6 +45,10 @@ internal sealed class CookingStationReader : ILensReader
         report.Reset();
         _cooking.Clear();
         _done.Clear();
+        // Both blocks come out in slot order and every row counts 1, so the panel's count sort
+        // would only alphabetize them.
+        _cooking.PreserveOrder = true;
+        _done.PreserveOrder = true;
 
         int slotCount = station.m_slots != null ? Mathf.Min(station.m_slots.Length, MaxSlots) : 0;
         int occupied = 0;
@@ -116,6 +120,12 @@ internal sealed class CookingStationReader : ILensReader
         float fuel = station.m_useFuel ? station.GetFuel() : 0f;
         bool noFuel = station.m_useFuel && fuel <= 0f;
 
+        // UpdateCooking only advances the cooked seconds under this condition, and it consumes
+        // the delta time before testing it, so nothing is caught up when the fire returns
+        // (spec 3.4 edge cases). Everything timed below has to be gated on it.
+        bool running = (station.m_requireFire && !noFire)
+            || (station.m_useFuel && fuel > 0f && (station.m_useFueldWhileEmpty || anyNotDone));
+
         report.Title = LensFormat.Name(station.m_name);
         if (noFire)
         {
@@ -144,11 +154,16 @@ internal sealed class CookingStationReader : ILensReader
         }
 
         LensMeter? next = null;
-        if (anyNotDone && nextRemaining < float.MaxValue)
+        if (anyNotDone)
         {
-            float remaining = Mathf.Max(nextRemaining, 0f);
-            float fraction = nextTotal > 0f ? Mathf.Clamp01(remaining / nextTotal) : 0f;
-            next = LensReport.Meter("Next", fraction, LensFormat.Time(remaining), remaining > 0f ? LensColor.Gold : LensColor.Good, drains: true);
+            // A stalled station would show a fixed countdown that never reaches Ready, so the
+            // headline reason stands alone instead.
+            if (running && nextRemaining < float.MaxValue)
+            {
+                float remaining = Mathf.Max(nextRemaining, 0f);
+                float fraction = nextTotal > 0f ? Mathf.Clamp01(remaining / nextTotal) : 0f;
+                next = LensReport.Meter("Next", fraction, LensFormat.Time(remaining), remaining > 0f ? LensColor.Gold : LensColor.Good, drains: true);
+            }
         }
         else if (anyDone)
         {
@@ -156,7 +171,7 @@ internal sealed class CookingStationReader : ILensReader
         }
 
         LensMeter? burns = null;
-        if (soonestBurn < float.MaxValue)
+        if (running && soonestBurn < float.MaxValue)
         {
             string text = soonestBurn > 0f ? LensFormat.Time(soonestBurn) : "Now";
             burns = LensReport.Meter("Burns", null, text, LensColor.Warn, drains: true);

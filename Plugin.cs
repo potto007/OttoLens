@@ -1,5 +1,6 @@
 using BepInEx.Configuration;
 using BepInEx.Logging;
+using OttoLens.Readers;
 using OttoLens.UI;
 
 namespace OttoLens;
@@ -64,6 +65,9 @@ public class OttoLensPlugin : BaseUnityPlugin
     internal static ConfigEntry<bool> ShowFermenting = null!;
     internal static ConfigEntry<bool> ShowPlants = null!;
     internal static ConfigEntry<bool> ShowPickables = null!;
+    // Spec 3.9 item 2: the picked respawn line is the optional half of that item, so it is
+    // off by default and gated apart from ShowPickables, which also covers the unpicked yield.
+    internal static ConfigEntry<bool> ShowRespawn = null!;
     internal static ConfigEntry<PieceStatus> ShowBuildPieces = null!;
     internal static ConfigEntry<bool> ShowMineables = null!;
     internal static ConfigEntry<bool> ShowTreesAndRocks = null!;
@@ -104,6 +108,7 @@ public class OttoLensPlugin : BaseUnityPlugin
         ShowFermenting = Config.Bind(TargetSection, "fermenting", true, "Fermenters, beehives and sap collectors.");
         ShowPlants = Config.Bind(TargetSection, "plants", true, "Planted crops and saplings.");
         ShowPickables = Config.Bind(TargetSection, "pickables", true, "Pickable plants and item piles.");
+        ShowRespawn = Config.Bind(TargetSection, "showRespawn", false, "Show the respawn countdown on an already picked pickable. Needs pickables on.");
         ShowBuildPieces = Config.Bind(TargetSection, "buildPieces", PieceStatus.WithHammer, "Build piece health and support: Off, WithHammer (place mode only) or Always (any hovered piece).");
         ShowMineables = Config.Bind(TargetSection, "mineables", true, "Mineable rocks (MineRock and MineRock5). On by default; rocks are Hoverable and cost no extra raycast.");
         ShowTreesAndRocks = Config.Bind(TargetSection, "treesAndRocks", false, "Trees, stumps and logs. Off by default: they are read from the vanilla hover, so this costs nothing while it is off and no extra raycast while it is on.");
@@ -143,8 +148,22 @@ public class OttoLensPlugin : BaseUnityPlugin
         }
     }
 
+    /// Unpatching removes the Hud hooks, so Hud.OnDestroy can no longer tear the panel down:
+    /// without this the panel would stay parented under the Hud with its tick loop running and
+    /// the static Localization.OnLanguageChange handlers would keep this assembly reachable.
     private void OnDestroy()
     {
+        try
+        {
+            Patches.Teardown();
+            LensFormat.UnhookLanguage();
+            LensReaders.UnhookLanguage();
+        }
+        catch (Exception ex)
+        {
+            Log.LogWarning($"Teardown failed: {ex}");
+        }
+
         _harmony.UnpatchSelf();
     }
 }

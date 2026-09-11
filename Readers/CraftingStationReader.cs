@@ -35,10 +35,13 @@ internal sealed class CraftingStationReader : ILensReader
     // is the revision the inventory was actually deserialized from, while DataRevision moves as
     // soon as the ZDO arrives and the 1 s CheckForChanges tick reloads m_inventory up to a
     // second later (same reasoning as ContainerReader, lines 19-25). The item count is a cheap
-    // second guard.
+    // second guard and LensReaders.LocalizationEpoch a third, because the group names come from
+    // LensFormat.Name and would otherwise survive a language change. The report signature here
+    // already carries the localized title, so the epoch only has to invalidate the rows.
     private Container? _groupedContainer;
     private uint _groupedRevision;
     private int _groupedCount = -1;
+    private int _groupedEpoch = -1;
 
     public Type TargetType => typeof(CraftingStation);
 
@@ -116,11 +119,13 @@ internal sealed class CraftingStationReader : ILensReader
 
         List<ItemDrop.ItemData> items = inventory.GetAllItems();
         uint revision = container.m_lastRevision;
-        if (_groupedContainer != container || _groupedRevision != revision || _groupedCount != items.Count)
+        int epoch = LensReaders.LocalizationEpoch;
+        if (_groupedContainer != container || _groupedRevision != revision || _groupedCount != items.Count || _groupedEpoch != epoch)
         {
             _groupedContainer = container;
             _groupedRevision = revision;
             _groupedCount = items.Count;
+            _groupedEpoch = epoch;
             Regroup(items);
         }
 

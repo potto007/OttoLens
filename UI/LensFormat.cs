@@ -12,8 +12,10 @@ public static class LensFormat
     // NameCache holds Localize() output, which changes when the player switches language in the
     // settings menu. That does not destroy the Hud, so ClearCaches() would only catch it on world
     // unload. Localization.SetLanguage fires the static OnLanguageChange (assembly_guiutils 1.0.7)
-    // and vanilla relocalizes off the same signal, so hook it once on first use and never detach:
-    // the handler is static, so it keeps nothing alive and stays correct across worlds.
+    // and vanilla relocalizes off the same signal, so hook it once on first use and keep it for
+    // the life of the assembly: the handler is static, so it stays correct across worlds. Plugin
+    // unload detaches it through UnhookLanguage(), otherwise the static event would keep an
+    // unloaded assembly's statics reachable and a reloaded copy could not re-register cleanly.
     private static bool _languageHooked;
 
     /// Absolute short time: m:ss under 10 minutes, Xm Ys under an hour, Xh Ym above,
@@ -131,6 +133,17 @@ public static class LensFormat
     public static string Upper(string text) => text.ToUpperInvariant();
 
     internal static void ClearCaches() => NameCache.Clear();
+
+    /// Plugin unload only. Detaches the language hook so the next Name() call re-registers it,
+    /// which is what a hot reload of the assembly needs.
+    internal static void UnhookLanguage()
+    {
+        if (_languageHooked)
+        {
+            Localization.OnLanguageChange -= ClearCaches;
+            _languageHooked = false;
+        }
+    }
 
     private static string StripToken(string token)
     {

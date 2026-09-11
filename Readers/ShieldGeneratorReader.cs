@@ -77,8 +77,13 @@ internal sealed class ShieldGeneratorReader : ILensReader
             }
         }
 
-        float radius = generator.m_minShieldRadius + ratio * (generator.m_maxShieldRadius - generator.m_minShieldRadius);
-        report.Secondary2 = LensReport.Meter("Radius", null, string.Format(CultureInfo.InvariantCulture, "{0:0} m", radius), LensColor.Dim);
+        // UpdateShield lerps the radius from the fuel ratio, then overrides it to zero when the
+        // tank is dry and m_offWhenNoFuel is set, so the dome is gone rather than at its minimum.
+        bool collapsed = generator.m_offWhenNoFuel && fuel <= 0f;
+        float radius = collapsed
+            ? 0f
+            : generator.m_minShieldRadius + ratio * (generator.m_maxShieldRadius - generator.m_minShieldRadius);
+        report.Secondary2 = LensReport.Meter("Radius", null, string.Format(CultureInfo.InvariantCulture, "{0:0} m", radius), collapsed ? LensColor.Bad : LensColor.Dim);
         return report;
     }
 }

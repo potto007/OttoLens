@@ -3,7 +3,8 @@ using OttoLens.Model;
 namespace OttoLens.Readers;
 
 /// Berry bush, mushroom, flower, and every other Pickable (spec 3.9). Unpicked shows the
-/// item and yield; picked shows the respawn countdown when the pickable respawns at all.
+/// item and yield; picked shows the respawn countdown when showRespawn is on and the pickable
+/// respawns at all.
 internal sealed class PickableReader : ILensReader
 {
     private static readonly Dictionary<string, Sprite?> SpriteCache = new(StringComparer.Ordinal);
@@ -63,7 +64,9 @@ internal sealed class PickableReader : ILensReader
             return report;
         }
 
-        if (pickable.m_respawnTimeMinutes <= 0f)
+        // Spec 3.9 item 2: the picked panel is opt in, so a picked patch stays quiet by default
+        // while the unpicked yield readout keeps working.
+        if (!OttoLensPlugin.ShowRespawn.Value || pickable.m_respawnTimeMinutes <= 0f)
         {
             return null;
         }

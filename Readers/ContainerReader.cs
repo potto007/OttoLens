@@ -22,10 +22,14 @@ internal sealed class ContainerReader : ILensReader
     // moves as soon as the ZDO arrives and the 1 s CheckForChanges tick reloads m_inventory up
     // to a second later. Keying on DataRevision would cache a group list built from the stale
     // inventory and never invalidate it when the counts change without the slot count moving.
-    // The item count rides along as a cheap second guard.
+    // The item count rides along as a cheap second guard, and LensReaders.LocalizationEpoch is
+    // the third: the group names come from LensFormat.Name, so a language change has to rebuild
+    // them even though neither the revision nor the count moved. The epoch also rides in the
+    // signature, because the panel only re-pushes row text on the Rebuild path.
     private Container? _cachedContainer;
     private uint _cachedRevision;
     private int _cachedCount = -1;
+    private int _cachedEpoch = -1;
     private string _cachedSignature = "";
 
     // Hash of the vanilla "Discovered_<player>" ZDO flag, rebuilt only when the name changes.
@@ -114,13 +118,15 @@ internal sealed class ContainerReader : ILensReader
         }
 
         uint revision = container.m_lastRevision;
-        if (!ReferenceEquals(container, _cachedContainer) || revision != _cachedRevision || used != _cachedCount)
+        int epoch = LensReaders.LocalizationEpoch;
+        if (!ReferenceEquals(container, _cachedContainer) || revision != _cachedRevision || used != _cachedCount || epoch != _cachedEpoch)
         {
             Regroup(inventory);
             _cachedContainer = container;
             _cachedRevision = revision;
             _cachedCount = used;
-            _cachedSignature = string.Concat(revision.ToString(), ":", used.ToString());
+            _cachedEpoch = epoch;
+            _cachedSignature = string.Concat(revision.ToString(), ":", used.ToString(), ":", epoch.ToString());
         }
 
         if (_groups.Count > 0)

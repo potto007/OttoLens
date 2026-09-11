@@ -51,6 +51,12 @@ internal sealed class LensPanel : MonoBehaviour
     private int _tickHz;
     private WaitForSeconds? _tickWait;
     private float _nextRetry;
+    // A reader that throws for one target throws for it every frame. Remember the pair that
+    // failed and skip Read until the target or the reader changes.
+    private Component? _failedTarget;
+    private ILensReader? _failedReader;
+
+    private static readonly HashSet<(Type Reader, Type Exception)> LoggedReaderFailures = new();
 
     // Static entry points
 
@@ -126,6 +132,8 @@ internal sealed class LensPanel : MonoBehaviour
             _target = null;
             _reader = null;
             _hover = null;
+            _failedTarget = null;
+            _failedReader = null;
             return;
         }
 
@@ -157,6 +165,8 @@ internal sealed class LensPanel : MonoBehaviour
         _hover = hover;
         _signature = null;
         _nextRetry = 0f;
+        _failedTarget = null;
+        _failedReader = null;
         Refresh();
     }
 
@@ -170,14 +180,25 @@ internal sealed class LensPanel : MonoBehaviour
             return;
         }
 
+        // Already known to throw for this target: SetTarget retries at refreshHz for as long as
+        // the crosshair rests here, and re-entering the throw would log on every retry.
+        if (ReferenceEquals(_target, _failedTarget) && ReferenceEquals(_reader, _failedReader))
+        {
+            BeginHide();
+            return;
+        }
+
+        ILensReader reader = _reader;
         LensReport? report;
         try
         {
-            report = _reader.Read(_target, _hover);
+            report = reader.Read(_target, _hover);
         }
         catch (Exception ex)
         {
-            OttoLensPlugin.Log.LogWarning($"{_reader.GetType().Name} threw {ex.GetType().Name}: {ex.Message}");
+            _failedTarget = _target;
+            _failedReader = reader;
+            LogReaderFailure(reader, ex);
             report = null;
         }
 
@@ -224,13 +245,15 @@ internal sealed class LensPanel : MonoBehaviour
         int blocks = (report.Block0 != null && report.Block0.Items.Count > 0 ? 1 : 0)
                      + (report.Block1 != null && report.Block1.Items.Count > 0 ? 1 : 0);
         int totalTypes = (report.Block0?.Items.Count ?? 0) + (report.Block1?.Items.Count ?? 0);
-        int rowBudget = RowBudget(statusCount, blocks, totalTypes, out bool overflowPossible);
+        int rowBudget = RowBudget(statusCount, blocks, totalTypes, out bool overflowPossible, out int rowsFit);
 
-        // Design section 7: maxRows is a per-block cap, so each block gets the whole budget.
-        // A shared running remainder let block 0 starve block 1, hiding the output rows.
+        // Design section 7: maxRows is a per-block cap, so block 0 gets the whole budget.
+        // Block 1 then gets what is left of the screen budget, never less than one row: an
+        // even split let a one-row output block cost the contents block half the screen.
         int hidden = 0;
-        _blocks[0].Apply(report.Block0, rowBudget, showNames, ref hidden);
-        _blocks[1].Apply(report.Block1, rowBudget, showNames, ref hidden);
+        int used = _blocks[0].Apply(report.Block0, rowBudget, showNames, ref hidden);
+        int rest = Mathf.Max(1, Mathf.Min(rowBudget, rowsFit - used));
+        _blocks[1].Apply(report.Block1, rest, showNames, ref hidden);
 
         bool showOverflow = hidden > 0 && overflowPossible;
         bool showFooter = !string.IsNullOrEmpty(report.Footer);
@@ -255,11 +278,11 @@ internal sealed class LensPanel : MonoBehaviour
         _footer.SetText(report.Footer ?? "");
     }
 
-    /// Design section 2: rows shown per block = min(maxRows, this block's share of rowsFit);
-    /// the overflow line is dropped when the types count is exactly maxRows + 1, because the
-    /// line costs a row anyway. The screen budget covers every block, so it is split between
-    /// the blocks that have rows while maxRows stays a per-block cap.
-    private int RowBudget(int statusCount, int blocks, int totalTypes, out bool overflowPossible)
+    /// Design section 2: rows shown per block = min(maxRows, rowsFit); the overflow line is
+    /// dropped when the types count is exactly maxRows + 1, because the line costs a row
+    /// anyway. maxRows is a per-block cap and rowsFit is the screen cap shared by both
+    /// blocks, so the caller hands out rowsFit by demand rather than splitting it evenly.
+    private int RowBudget(int statusCount, int blocks, int totalTypes, out bool overflowPossible, out int rowsFit)
     {
         int maxRows = Mathf.Clamp(OttoLensPlugin.MaxRows.Value, 1, ItemRowsPerBlock);
         float fixedHeight = 16f + 22f + 2f + 2f + 2f;
@@ -279,9 +302,8 @@ internal sealed class LensPanel : MonoBehaviour
 
         float offsetY = Mathf.Min(OttoLensPlugin.OffsetY.Value, -16);
         float scale = Mathf.Clamp(OttoLensPlugin.GuiScale.Value, 0.75f, 1.6f);
-        int rowsFit = Mathf.FloorToInt((offsetY + canvasHeight / 2f - 24f - fixedHeight * scale) / (ItemRowStride * scale));
-        int share = blocks > 1 ? rowsFit / blocks : rowsFit;
-        int shown = Mathf.Max(1, Mathf.Min(maxRows, share));
+        rowsFit = Mathf.FloorToInt((offsetY + canvasHeight / 2f - 24f - fixedHeight * scale) / (ItemRowStride * scale));
+        int shown = Mathf.Max(1, Mathf.Min(maxRows, rowsFit));
 
         // Skip the overflow line only when the extra type actually fits without hitting
         // the per-block row cap. When totalTypes would exceed ItemRowsPerBlock, a block
@@ -917,8 +939,10 @@ internal sealed class LensPanel : MonoBehaviour
                 _order.Add(i);
             }
 
-            // Row order is fixed at rebuild so rows do not jump between ticks.
-            if (OttoLensPlugin.SortRowsBy.Value == OttoLensPlugin.SortRows.Count)
+            // Row order is fixed at rebuild so rows do not jump between ticks. A block whose
+            // reader already ordered it (spec 3.14 equipment order, slot order) keeps that order:
+            // every row there has Count 1, so the count sort would only alphabetize it.
+            if (!block.PreserveOrder && OttoLensPlugin.SortRowsBy.Value == OttoLensPlugin.SortRows.Count)
             {
                 _order.Sort((a, b) =>
                 {
@@ -962,6 +986,17 @@ internal sealed class LensPanel : MonoBehaviour
                     _rows[r].TickCount(items[i]);
                 }
             }
+        }
+    }
+
+    /// One warning per reader and exception type, matching Patches.LogOnce: a reader that
+    /// throws deterministically would otherwise write a line on every retry.
+    private static void LogReaderFailure(ILensReader reader, Exception ex)
+    {
+        Type readerType = reader.GetType();
+        if (LoggedReaderFailures.Add((readerType, ex.GetType())))
+        {
+            OttoLensPlugin.Log.LogWarning($"{readerType.Name} threw {ex.GetType().Name}: {ex.Message}. Further {ex.GetType().Name} reports from {readerType.Name} are suppressed.\n{ex.StackTrace}");
         }
     }
 

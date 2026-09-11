@@ -54,19 +54,27 @@ internal static class Patches
     {
         try
         {
-            _lastHover = null;
-            _lastPlaceMode = false;
-            _lastReader = null;
-            _lastTarget = null;
-            LensPanel.Release();
-            LensFormat.ClearCaches();
-            LensReaders.ClearLocalizedCaches();
-            ContainerReader.ClearOpenedChests();
+            Teardown();
         }
         catch (Exception ex)
         {
             LogOnce(ex);
         }
+    }
+
+    /// Full teardown: the panel, the per frame cache and every memoized world or language
+    /// dependent string. Runs on Hud.OnDestroy (world unload) and again from the plugin's
+    /// OnDestroy, which is the only path left once the patches above are gone.
+    internal static void Teardown()
+    {
+        _lastHover = null;
+        _lastPlaceMode = false;
+        _lastReader = null;
+        _lastTarget = null;
+        LensPanel.Release();
+        LensFormat.ClearCaches();
+        LensReaders.ClearLocalizedCaches();
+        ContainerReader.ClearOpenedChests();
     }
 
     /// Spec 5.4 item 4: record an opened world chest so ContainerReader can reveal its contents.

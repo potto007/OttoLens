@@ -228,11 +228,15 @@ internal sealed class SmelterReader : ILensReader
         return null;
     }
 
+    // Keyed on the prefab that supplies the icon, never on the ore that caused the lookup:
+    // the output row asks for the product icon under the ore name stored in s_spawnOre, so an
+    // ore keyed entry would hand the queue icon to the output row (and the reverse).
     // The cache outlives a world unload: a destroyed sprite reads as Unity null and is fetched
     // again, so a stale entry cannot hand the panel a fake-null sprite that blanks the row art.
     private Sprite? GetSprite(string prefabName, ItemDrop? drop)
     {
-        if (_sprites.TryGetValue(prefabName, out Sprite? cached) && cached != null)
+        string key = drop != null ? drop.gameObject.name : prefabName;
+        if (_sprites.TryGetValue(key, out Sprite? cached) && cached != null)
         {
             return cached;
         }
@@ -250,7 +254,7 @@ internal sealed class SmelterReader : ILensReader
             }
         }
 
-        _sprites[prefabName] = sprite;
+        _sprites[key] = sprite;
         return sprite;
     }
 
