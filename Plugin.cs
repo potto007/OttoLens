@@ -107,7 +107,7 @@ public class OttoLensPlugin : BaseUnityPlugin
         BackdropAlpha = Config.Bind(PanelSection, "BackdropAlpha", 0.88f, new ConfigDescription("Opacity of the panel plate.", new AcceptableValueRange<float>(0.5f, 1.0f)));
         ShowDays = Config.Bind(PanelSection, "ShowDays", true, "Add a game day figure to fuel and grow times that run longer than half a day.");
 
-        RemoveLensDirt = Config.Bind(CameraSection, "RemoveLensDirt", true, "Remove the smudges that bloom draws over bright light. The Eye of Odin makes all things clear.");
+        RemoveLensDirt = Config.Bind(CameraSection, "RemoveLensDirt", true, "The Eye of Odin makes all things clear. Removes the smudges that bloom draws over bright light.");
 
         HideUnopenedWorldChests = Config.Bind(TargetSection, "HideUnopenedWorldChests", true, "Hide the contents of world-placed chests until the player has opened them once.");
         ShowContainers = Config.Bind(TargetSection, "Containers", true, "Chests, carts and ship holds.");
