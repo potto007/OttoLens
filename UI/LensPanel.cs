@@ -668,12 +668,17 @@ internal sealed class LensPanel : MonoBehaviour
     private static TextSlot NewText(string name, Transform parent, TMP_FontAsset font, float size, TextAlignmentOptions align, Color color, bool ellipsis)
     {
         RectTransform rect = NewRect(name, parent);
+        // Add TMP while inactive: its Awake falls back to TMP_Settings' LiberationSans SDF,
+        // which Valheim does not ship, and warns once per label unless the font is set first.
+        rect.gameObject.SetActive(false);
         TextMeshProUGUI tmp = rect.gameObject.AddComponent<TextMeshProUGUI>();
         // Font only. The shared material belongs to the vanilla hover label.
         if (font != null)
         {
             tmp.font = font;
         }
+
+        rect.gameObject.SetActive(true);
 
         tmp.fontSize = size;
         tmp.alignment = align;
