@@ -13,7 +13,7 @@ internal sealed class BeehiveReader : ILensReader
 
     // CheckBiome costs a Heightmap.FindBiome and HaveFreeSpace costs a 100 m spherecast plus
     // seventeen 30 m raycasts through Cover.GetCoverForPoint. Vanilla pays that once per ten
-    // seconds from UpdateBees; the panel would pay it at refreshHz. Hold the pair for a
+    // seconds from UpdateBees; the panel would pay it at RefreshHz. Hold the pair for a
     // couple of seconds per hive so a resting crosshair costs nothing (spec 6.4 rule 7).
     private const float StateCacheSeconds = 2f;
     private Beehive? _cachedHive;

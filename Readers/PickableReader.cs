@@ -3,7 +3,7 @@ using OttoLens.Model;
 namespace OttoLens.Readers;
 
 /// Berry bush, mushroom, flower, and every other Pickable (spec 3.9). Unpicked shows the
-/// item and yield; picked shows the respawn countdown when showRespawn is on and the pickable
+/// item and yield; picked shows the respawn countdown when ShowRespawn is on and the pickable
 /// respawns at all.
 internal sealed class PickableReader : ILensReader
 {

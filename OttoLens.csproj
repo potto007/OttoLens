@@ -19,6 +19,8 @@
     <Reference Include="assembly_valheim" HintPath="$(CorlibPath)/assembly_valheim.dll" Private="false" Publicize="true" />
     <Reference Include="assembly_utils" HintPath="$(CorlibPath)/assembly_utils.dll" Private="false" Publicize="true" />
     <Reference Include="assembly_guiutils" HintPath="$(CorlibPath)/assembly_guiutils.dll" Private="false" Publicize="true" />
+    <!-- Public API only: LensDirt writes BloomModel.settings. -->
+    <Reference Include="assembly_postprocessing" HintPath="$(CorlibPath)/assembly_postprocessing.dll" Private="false" />
 
     <Reference Include="0Harmony" HintPath="$(BepInExPath)/core/0Harmony.dll" Private="false" />
     <Reference Include="BepInEx" HintPath="$(BepInExPath)/core/BepInEx.dll" Private="false" />

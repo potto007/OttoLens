@@ -16,8 +16,8 @@ with fixed or accepted and why.
 
 ## 1. ASCII mockups (1080p, 1 char = about 8 px)
 
-Chest, 11 item types, default `maxRows = 10`. Eleven types is exactly
-`maxRows + 1`, so the overflow line is replaced by the eleventh row (the line
+Chest, 11 item types, default `MaxRows = 10`. Eleven types is exactly
+`MaxRows + 1`, so the overflow line is replaced by the eleventh row (the line
 costs a row either way).
 
 ```
@@ -88,7 +88,7 @@ rows.
 ## 2. uGUI hierarchy (px at 1080p)
 
 Parent: the Hud canvas (`Hud.instance.m_rootObject.transform`), which carries
-the vanilla CanvasScaler, so 1440p needs no extra work. `guiScale` (config,
+the vanilla CanvasScaler, so 1440p needs no extra work. `GuiScale` (config,
 default 1.0) multiplies the root `localScale` only; `anchoredPosition` is in
 canvas units and does not scale, so the left edge stays put.
 
@@ -176,16 +176,16 @@ The name column is the only flexible element in any row, and it has
 
 Pivot (0,1) at `(offsetX, offsetY)` from screen centre means the panel occupies
 `x in [offsetX, offsetX + 300]`, `y in [offsetY - height, offsetY]`. With
-`offsetX >= 96` and `offsetY <= -16` (config clamps, both enforced in code) the
+`OffsetX >= 96` and `OffsetY <= -16` (config clamps, both enforced in code) the
 crosshair box at centre is never inside that rectangle, at any row count and
-at any `guiScale`. Growth is downward from a fixed top-left corner, so the aim
+at any `GuiScale`. Growth is downward from a fixed top-left corner, so the aim
 point is never approached as content grows.
 
-`avoidHoverText` (default true): on rebuild only, read
+`AvoidHoverText` (default true): on rebuild only, read
 `Hud.instance.m_hoverName.preferredWidth`, and if `width/2 + 16 > offsetX`
 place the panel at `width/2 + 16` for the life of that target. It only ever
 pushes right, never left, and never runs on the tick path. With it off the
-left edge is fixed at `offsetX`.
+left edge is fixed at `OffsetX`.
 
 Vertical clamp: at rebuild, `rowsFit = floor((offsetY + canvasHeight/2 - 24 -
 fixedHeight) / 33)` where `fixedHeight` is header, status block, rules and
@@ -223,7 +223,7 @@ footer 14. Icon tile 30 with a 28 px sprite inside. Row height 32, primary
 status row 22, secondary 18, title row 22. Meter 120 wide; 10 px tall primary,
 6 px secondary; fill inset 1 px on all sides so the fill width is `f * 118`.
 Panel padding 10 sides, 8 top and bottom. At 1440p the CanvasScaler lifts 15 px
-rows to about 20 px; `guiScale 1.15` is the recommended value there.
+rows to about 20 px; `GuiScale 1.15` is the recommended value there.
 
 ## 4. Vanilla sprites and fallback
 
@@ -277,7 +277,7 @@ Secondary rows, fixed order, only when the target supplies the data:
 1. `Next`: process time remaining, drains, Gold; `Ready` in Good at zero.
 2. `Support` (build pieces only): `support / maxSupport`, ramp inverted so high
    is Good; sits directly under `Health` so the pair compares at one glance.
-   Full-health pieces hide `Health` unless `showFullHealth` is on, and then
+   Full-health pieces hide `Health` unless `ShowFullHealth` is on, and then
    `Support` becomes the primary.
 
 Item blocks: block 0 is contents or queue (chest items, ore queue, pet
@@ -309,15 +309,15 @@ Weakness ledger (every judge point on B):
 
 | Judge point | Disposition |
 | --- | --- |
-| Column floats 150 px right, looks detached | Fixed in part: gold edge and 0.88 plate give it a body; `avoidHoverText` closes the gap only when the vanilla line is wide. Accepted remainder: a fixed left edge is the price of not depending on the vanilla text height, which the build lens ranked higher. |
+| Column floats 150 px right, looks detached | Fixed in part: gold edge and 0.88 plate give it a body; `AvoidHoverText` closes the gap only when the vanilla line is wide. Accepted remainder: a fixed left edge is the price of not depending on the vanilla text height, which the build lens ranked higher. |
 | Low identity, debug-overlay look, backdrop vanishes in dark biomes | Fixed: 3 px gold edge, 1 px outline, Panel alpha 0.88, gold title rule. |
 | 24 px icons too small | Fixed: 30 px tile, 28 px art, 32 px rows. |
 | Inline meters jar against the serif ledger | Fixed in part: secondary tracks use the rule colour so they read as a rule that lights up; primary is the only heavy bar. Accepted remainder: a bar is the only pre-attentive shape available without a sprite. |
-| Row cap 8 hides a busy chest | Fixed: default 10 rows, `maxRows + 1` shows all, rows sort by count desc so the hidden tail is the small stuff, screen-height clamp keeps the raised cap on screen. Accepted: 30 types still says `and 20 more`; a two-column grid would reintroduce badges over art. |
+| Row cap 8 hides a busy chest | Fixed: default 10 rows, `MaxRows + 1` shows all, rows sort by count desc so the hidden tail is the small stuff, screen-height clamp keeps the raised cap on screen. Accepted: 30 types still says `and 20 more`; a two-column grid would reintroduce badges over art. |
 | Vertical list scans slower than a 2-row grid | Accepted: names remove the recognition step, which is the bigger cost for a moving player; count-desc sort puts the answer in the first three rows. |
-| Fixed anchor lets a wide vanilla line run under the panel | Fixed: `avoidHoverText` width probe on rebuild only. |
+| Fixed anchor lets a wide vanilla line run under the panel | Fixed: `AvoidHoverText` width probe on rebuild only. |
 | No dominant signal on a smelter | Fixed: primary row rule (10 px meter, coloured value), state word headline, at most two secondaries. |
-| Drifts into play view at 1440p with guiScale 1.15 | Fixed: `anchoredPosition` does not scale with `localScale`, so the left edge stays; vertical clamp keeps the bottom on screen. |
+| Drifts into play view at 1440p with GuiScale 1.15 | Fixed: `anchoredPosition` does not scale with `localScale`, so the left edge stays; vertical clamp keeps the bottom on screen. |
 | Many TMPs regenerate meshes at 4 Hz | Fixed: `SetTextIfChanged` string cache on every TMP; colour and sizeDelta writes are also dirty-checked. |
 | TMP ellipsis in an HLG can widen the row | Fixed: Name and Title have `minWidth 0`, `preferredWidth 0`, `flexibleWidth 1`, wrap off; every row HLG has `childForceExpandWidth = false`; Count and Label have fixed widths. |
 | Localization dependency | Accepted: `Localization.instance.Localize(m_shared.m_name)` cached per token in a static dictionary; on throw, show the token with `$` stripped. |
@@ -337,14 +337,14 @@ Build once
       materials.
 - [ ] Build the tree in section 2 exactly once. Set `raycastTarget = false`
       and `richText = false` on every element as it is created.
-- [ ] Clamp config at build: `offsetX >= 96`, `offsetY <= -16`,
-      `panelWidth in [240, 420]`, `maxRows in [1, 16]`, `guiScale in [0.75, 1.6]`,
-      `refreshHz in [1, 10]`.
+- [ ] Clamp config at build: `OffsetX >= 96`, `OffsetY <= -16`,
+      `PanelWidth in [240, 420]`, `MaxRows in [1, 16]`, `GuiScale in [0.75, 1.6]`,
+      `RefreshHz in [1, 10]`.
 - [ ] Root starts `SetActive(false)` with `CanvasGroup.alpha = 0`.
 
 Pool
 
-- [ ] Item rows: 16 (the hard `maxRows` max) per item block, 2 blocks, built
+- [ ] Item rows: 16 (the hard `MaxRows` max) per item block, 2 blocks, built
       once, never destroyed; toggled with `SetActive`.
 - [ ] Status rows: 3 (1 primary, 2 secondary). Overflow and footer: 1 each.
 - [ ] Each pooled row keeps its last string, colour and fill width; setters
@@ -358,14 +358,14 @@ Refresh rules
       row `SetActive`, block `SetActive`, reads the hover-text width, applies
       the `rowsFit` clamp, then calls
       `LayoutRebuilder.ForceRebuildLayoutImmediate(root)` once.
-- [ ] **Tick** runs on a coroutine at `refreshHz` (default 4) while visible and
+- [ ] **Tick** runs on a coroutine at `RefreshHz` (default 4) while visible and
       writes only counts, values, headline, meter `sizeDelta.x` and colours.
       No `SetActive`, no `LayoutRebuilder` call, no allocation beyond the
       formatted strings.
 - [ ] The tick compares a cheap signature (row count plus item token hash)
       and promotes itself to a rebuild when it differs.
 - [ ] Row order: sort by count descending, then name, computed at rebuild
-      only, so rows do not jump between ticks. Config `sortRows = slot`
+      only, so rows do not jump between ticks. Config `SortRows = Slot`
       keeps container slot order.
 - [ ] `rows shown = types` when `types == maxRows + 1`; otherwise
       `min(maxRows, rowsFit)` plus `and N more`.
@@ -375,13 +375,13 @@ Refresh rules
 Hide and destroy
 
 - [ ] On hover loss: stop the tick coroutine, fade `CanvasGroup.alpha` to 0
-      over `fadeSeconds` (default 0.08), then `root.SetActive(false)`. No
+      over `FadeSeconds` (default 0.08), then `root.SetActive(false)`. No
       `Update` and no coroutine runs while hidden.
 - [ ] On hover gain: `root.SetActive(true)`, rebuild, start the tick, fade in.
 - [ ] Hud destroyed or scene unloaded: the panel dies with its parent; the
       static reference is checked with `== null` (Unity fake-null) before use
       and rebuilt lazily.
-- [ ] Config `enabled` flipped off at runtime: destroy root, null the static,
+- [ ] Config `Enabled` flipped off at runtime: destroy root, null the static,
       release nothing else (sprites are vanilla-owned).
 - [ ] Targets without any data (no container, no fuel, no health, no items):
       panel stays hidden. Show nothing rather than an empty plate.
@@ -390,20 +390,20 @@ Config knobs (BepInEx `ConfigEntry`, section `OttoLens`)
 
 | Key | Default | Range | Effect |
 | --- | --- | --- | --- |
-| `enabled` | true | | master switch |
-| `offsetX` | 150 | 96..600 | left edge, px right of screen centre |
-| `offsetY` | -32 | -400..-16 | top edge, px below screen centre |
-| `panelWidth` | 300 | 240..420 | fixed panel width |
-| `guiScale` | 1.0 | 0.75..1.6 | root `localScale` |
-| `maxRows` | 10 | 1..16 | item rows per block before `and N more`, screen-clamped |
-| `sortRows` | count | count, slot | row order |
-| `showNames` | true | | false hides the Name column (icon and count only) |
-| `showFullHealth` | false | | show Health row at 100 percent |
-| `avoidHoverText` | true | | push right past a wide vanilla hover line |
-| `refreshHz` | 4 | 1..10 | tick rate while visible |
-| `fadeSeconds` | 0.08 | 0..0.5 | show and hide fade |
-| `backdropAlpha` | 0.88 | 0.5..1.0 | Panel colour alpha |
+| `Enabled` | true | | master switch |
+| `OffsetX` | 150 | 96..600 | left edge, px right of screen centre |
+| `OffsetY` | -32 | -400..-16 | top edge, px below screen centre |
+| `PanelWidth` | 300 | 240..420 | fixed panel width |
+| `GuiScale` | 1.0 | 0.75..1.6 | root `localScale` |
+| `MaxRows` | 10 | 1..16 | item rows per block before `and N more`, screen-clamped |
+| `SortRows` | Count | Count, Slot | row order |
+| `ShowNames` | true | | false hides the Name column (icon and count only) |
+| `ShowFullHealth` | false | | show Health row at 100 percent |
+| `AvoidHoverText` | true | | push right past a wide vanilla hover line |
+| `RefreshHz` | 4 | 1..10 | tick rate while visible |
+| `FadeSeconds` | 0.08 | 0..0.5 | show and hide fade |
+| `BackdropAlpha` | 0.88 | 0.5..1.0 | Panel colour alpha |
 
-Config changes to `offsetX`, `offsetY`, `panelWidth`, `guiScale`,
-`backdropAlpha` apply on the next rebuild without a restart; `maxRows` and
-`showNames` force a rebuild on change.
+Config changes to `OffsetX`, `OffsetY`, `PanelWidth`, `GuiScale`,
+`BackdropAlpha` apply on the next rebuild without a restart; `MaxRows` and
+`ShowNames` force a rebuild on change.

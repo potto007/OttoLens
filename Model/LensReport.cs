@@ -60,7 +60,7 @@ public sealed class LensItemBlock
     /// Output rows show their count in the Good colour.
     public bool IsOutput;
     /// The reader already put the rows in the order that matters (spec 3.14 equipment order,
-    /// or slot order), so the panel's sortRows = Count pass leaves this block alone.
+    /// or slot order), so the panel's SortRows = Count pass leaves this block alone.
     public bool PreserveOrder;
     public readonly List<LensItem> Items = new();
 

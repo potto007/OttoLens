@@ -8,7 +8,7 @@ namespace OttoLens.UI;
 
 /// The ledger panel from panel-design.md. Built once under the Hud root, pooled rows, two
 /// refresh paths: a rebuild when the target or its content shape changes, a cheap tick at
-/// refreshHz that writes only values. Hidden whenever there is no report.
+/// RefreshHz that writes only values. Hidden whenever there is no report.
 internal sealed class LensPanel : MonoBehaviour
 {
     // Design section 2 metrics, canvas units at 1080p.
@@ -180,7 +180,7 @@ internal sealed class LensPanel : MonoBehaviour
             return;
         }
 
-        // Already known to throw for this target: SetTarget retries at refreshHz for as long as
+        // Already known to throw for this target: SetTarget retries at RefreshHz for as long as
         // the crosshair rests here, and re-entering the throw would log on every retry.
         if (ReferenceEquals(_target, _failedTarget) && ReferenceEquals(_reader, _failedReader))
         {

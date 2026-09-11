@@ -17,6 +17,7 @@ public class OttoLensPlugin : BaseUnityPlugin
     private readonly Harmony _harmony = new(ModGUID);
 
     private const string PanelSection = "OttoLens";
+    private const string CameraSection = "Camera";
     private const string TargetSection = "Targets";
 
     public enum SortRows
@@ -54,6 +55,10 @@ public class OttoLensPlugin : BaseUnityPlugin
     // Spec 4.2 ShowDays, used by LensFormat.TimeWithDays.
     internal static ConfigEntry<bool> ShowDays = null!;
 
+    // The Eye of Odin makes all things clear: bloom lens dirt is off unless the player wants it.
+    // Independent of Enabled, so the toggle key does not flash the smudges on and off.
+    internal static ConfigEntry<bool> RemoveLensDirt = null!;
+
     // Spec 4.2 Containers item 12: hide world chest contents until opened.
     internal static ConfigEntry<bool> HideUnopenedWorldChests = null!;
 
@@ -79,51 +84,57 @@ public class OttoLensPlugin : BaseUnityPlugin
     {
         BindConfig();
         _harmony.PatchAll(typeof(OttoLensPlugin).Assembly);
+        // A late load (script reload) finds the camera already awake; a normal start finds none.
+        LensDirt.ApplyCurrent();
         Log.LogInfo($"{ModName} {ModVersion} loaded.");
     }
 
     private void BindConfig()
     {
-        Enabled = Config.Bind(PanelSection, "enabled", true, "Master switch. Off hides the panel and skips every reader.");
-        ToggleKey = Config.Bind(PanelSection, "toggleKey", KeyCode.H, "Key that flips the master toggle at runtime. Set to None to disable.");
-        OffsetX = Config.Bind(PanelSection, "offsetX", 150, new ConfigDescription("Left edge of the panel, pixels right of screen centre.", new AcceptableValueRange<int>(96, 600)));
-        OffsetY = Config.Bind(PanelSection, "offsetY", -32, new ConfigDescription("Top edge of the panel, pixels below screen centre (negative).", new AcceptableValueRange<int>(-400, -16)));
-        PanelWidth = Config.Bind(PanelSection, "panelWidth", 300, new ConfigDescription("Fixed panel width in pixels.", new AcceptableValueRange<int>(240, 420)));
-        GuiScale = Config.Bind(PanelSection, "guiScale", 1.0f, new ConfigDescription("Scale of the whole panel. 1.15 is a good value at 1440p.", new AcceptableValueRange<float>(0.75f, 1.6f)));
-        MaxRows = Config.Bind(PanelSection, "maxRows", 10, new ConfigDescription("Item rows per block before 'and N more'. Also clamped to what fits on screen.", new AcceptableValueRange<int>(1, 16)));
-        SortRowsBy = Config.Bind(PanelSection, "sortRows", SortRows.Count, "Row order: Count sorts by count descending then name; Slot keeps the container's own order.");
-        ShowNames = Config.Bind(PanelSection, "showNames", true, "Show the item name column. Off shows icon and count only.");
-        ShowFullHealth = Config.Bind(PanelSection, "showFullHealth", false, "Show the Health row on a build piece at 100 percent.");
-        AvoidHoverText = Config.Bind(PanelSection, "avoidHoverText", true, "Push the panel right when the vanilla hover line is wide enough to run under it.");
-        RefreshHz = Config.Bind(PanelSection, "refreshHz", 4, new ConfigDescription("Value refresh rate while the panel is visible.", new AcceptableValueRange<int>(1, 10)));
-        FadeSeconds = Config.Bind(PanelSection, "fadeSeconds", 0.08f, new ConfigDescription("Show and hide fade, in seconds.", new AcceptableValueRange<float>(0f, 0.5f)));
-        BackdropAlpha = Config.Bind(PanelSection, "backdropAlpha", 0.88f, new ConfigDescription("Opacity of the panel plate.", new AcceptableValueRange<float>(0.5f, 1.0f)));
-        ShowDays = Config.Bind(PanelSection, "showDays", true, "Add a game day figure to fuel and grow times that run longer than half a day.");
+        Enabled = Config.Bind(PanelSection, "Enabled", true, "Master switch. Off hides the panel and skips every reader.");
+        ToggleKey = Config.Bind(PanelSection, "ToggleKey", KeyCode.H, "Key that flips the master toggle at runtime. Set to None to disable.");
+        OffsetX = Config.Bind(PanelSection, "OffsetX", 150, new ConfigDescription("Left edge of the panel, pixels right of screen centre.", new AcceptableValueRange<int>(96, 600)));
+        OffsetY = Config.Bind(PanelSection, "OffsetY", -32, new ConfigDescription("Top edge of the panel, pixels below screen centre (negative).", new AcceptableValueRange<int>(-400, -16)));
+        PanelWidth = Config.Bind(PanelSection, "PanelWidth", 300, new ConfigDescription("Fixed panel width in pixels.", new AcceptableValueRange<int>(240, 420)));
+        GuiScale = Config.Bind(PanelSection, "GuiScale", 1.0f, new ConfigDescription("Scale of the whole panel. 1.15 is a good value at 1440p.", new AcceptableValueRange<float>(0.75f, 1.6f)));
+        MaxRows = Config.Bind(PanelSection, "MaxRows", 10, new ConfigDescription("Item rows per block before 'and N more'. Also clamped to what fits on screen.", new AcceptableValueRange<int>(1, 16)));
+        SortRowsBy = Config.Bind(PanelSection, "SortRows", SortRows.Count, "Row order: Count sorts by count descending then name; Slot keeps the container's own order.");
+        ShowNames = Config.Bind(PanelSection, "ShowNames", true, "Show the item name column. Off shows icon and count only.");
+        ShowFullHealth = Config.Bind(PanelSection, "ShowFullHealth", false, "Show the Health row on a build piece at 100 percent.");
+        AvoidHoverText = Config.Bind(PanelSection, "AvoidHoverText", true, "Push the panel right when the vanilla hover line is wide enough to run under it.");
+        RefreshHz = Config.Bind(PanelSection, "RefreshHz", 4, new ConfigDescription("Value refresh rate while the panel is visible.", new AcceptableValueRange<int>(1, 10)));
+        FadeSeconds = Config.Bind(PanelSection, "FadeSeconds", 0.08f, new ConfigDescription("Show and hide fade, in seconds.", new AcceptableValueRange<float>(0f, 0.5f)));
+        BackdropAlpha = Config.Bind(PanelSection, "BackdropAlpha", 0.88f, new ConfigDescription("Opacity of the panel plate.", new AcceptableValueRange<float>(0.5f, 1.0f)));
+        ShowDays = Config.Bind(PanelSection, "ShowDays", true, "Add a game day figure to fuel and grow times that run longer than half a day.");
 
-        HideUnopenedWorldChests = Config.Bind(TargetSection, "hideUnopenedWorldChests", true, "Hide the contents of world-placed chests until the player has opened them once.");
-        ShowContainers = Config.Bind(TargetSection, "containers", true, "Chests, carts and ship holds.");
-        ShowFires = Config.Bind(TargetSection, "fires", true, "Fireplaces, hearths, torches and braziers.");
-        ShowSmelters = Config.Bind(TargetSection, "smelters", true, "Smelters, kilns, blast furnaces and windmill fed smelters.");
-        ShowCooking = Config.Bind(TargetSection, "cooking", true, "Cooking stations and ovens.");
-        ShowFermenting = Config.Bind(TargetSection, "fermenting", true, "Fermenters, beehives and sap collectors.");
-        ShowPlants = Config.Bind(TargetSection, "plants", true, "Planted crops and saplings.");
-        ShowPickables = Config.Bind(TargetSection, "pickables", true, "Pickable plants and item piles.");
-        ShowRespawn = Config.Bind(TargetSection, "showRespawn", false, "Show the respawn countdown on an already picked pickable. Needs pickables on.");
-        ShowBuildPieces = Config.Bind(TargetSection, "buildPieces", PieceStatus.WithHammer, "Build piece health and support: Off, WithHammer (place mode only) or Always (any hovered piece).");
-        ShowMineables = Config.Bind(TargetSection, "mineables", true, "Mineable rocks (MineRock and MineRock5). On by default; rocks are Hoverable and cost no extra raycast.");
-        ShowTreesAndRocks = Config.Bind(TargetSection, "treesAndRocks", false, "Trees, stumps and logs. Off by default: they are read from the vanilla hover, so this costs nothing while it is off and no extra raycast while it is on.");
-        ShowStands = Config.Bind(TargetSection, "stands", true, "Item stands and armor stands.");
-        ShowCreatures = Config.Bind(TargetSection, "creatures", true, "Tamed creatures and pets.");
-        ShowMisc = Config.Bind(TargetSection, "misc", true, "Tombstones, wisp spawners, shield generators, feasts, ground items and crafting stations.");
+        RemoveLensDirt = Config.Bind(CameraSection, "RemoveLensDirt", true, "Remove the smudges that bloom draws over bright light. The Eye of Odin makes all things clear.");
+
+        HideUnopenedWorldChests = Config.Bind(TargetSection, "HideUnopenedWorldChests", true, "Hide the contents of world-placed chests until the player has opened them once.");
+        ShowContainers = Config.Bind(TargetSection, "Containers", true, "Chests, carts and ship holds.");
+        ShowFires = Config.Bind(TargetSection, "Fires", true, "Fireplaces, hearths, torches and braziers.");
+        ShowSmelters = Config.Bind(TargetSection, "Smelters", true, "Smelters, kilns, blast furnaces and windmill fed smelters.");
+        ShowCooking = Config.Bind(TargetSection, "Cooking", true, "Cooking stations and ovens.");
+        ShowFermenting = Config.Bind(TargetSection, "Fermenting", true, "Fermenters, beehives and sap collectors.");
+        ShowPlants = Config.Bind(TargetSection, "Plants", true, "Planted crops and saplings.");
+        ShowPickables = Config.Bind(TargetSection, "Pickables", true, "Pickable plants and item piles.");
+        ShowRespawn = Config.Bind(TargetSection, "ShowRespawn", false, "Show the respawn countdown on an already picked pickable. Needs Pickables on.");
+        ShowBuildPieces = Config.Bind(TargetSection, "BuildPieces", PieceStatus.WithHammer, "Build piece health and support: Off, WithHammer (place mode only) or Always (any hovered piece).");
+        ShowMineables = Config.Bind(TargetSection, "Mineables", true, "Mineable rocks (MineRock and MineRock5). On by default; rocks are Hoverable and cost no extra raycast.");
+        ShowTreesAndRocks = Config.Bind(TargetSection, "TreesAndRocks", false, "Trees, stumps and logs. Off by default: they are read from the vanilla hover, so this costs nothing while it is off and no extra raycast while it is on.");
+        ShowStands = Config.Bind(TargetSection, "Stands", true, "Item stands and armor stands.");
+        ShowCreatures = Config.Bind(TargetSection, "Creatures", true, "Tamed creatures and pets.");
+        ShowMisc = Config.Bind(TargetSection, "Misc", true, "Tombstones, wisp spawners, shield generators, feasts, ground items and crafting stations.");
 
         // Design section 7: geometry applies on the next rebuild; these force one now.
-        // Row order is fixed at rebuild too, so sortRows needs the same push to take effect
+        // Row order is fixed at rebuild too, so SortRows needs the same push to take effect
         // while the player is still hovering the target they changed it for.
         MaxRows.SettingChanged += OnRebuildSettingChanged;
         ShowNames.SettingChanged += OnRebuildSettingChanged;
         SortRowsBy.SettingChanged += OnRebuildSettingChanged;
         // A master switch flip tears the panel down; the next frame with it on rebuilds lazily.
         Enabled.SettingChanged += OnEnabledChanged;
+        // CameraEffects.Awake covers each new camera; a flip mid-session has to reach the live one.
+        RemoveLensDirt.SettingChanged += OnLensDirtChanged;
         // Patches caches the resolved reader per hover object, and the target gates are read
         // only during that resolve, so flipping one while the crosshair rests on the target has
         // to drop the cache. One handler on the file covers every entry in the Targets section.
@@ -131,6 +142,8 @@ public class OttoLensPlugin : BaseUnityPlugin
     }
 
     private static void OnRebuildSettingChanged(object sender, EventArgs e) => LensPanel.RequestRebuild();
+
+    private static void OnLensDirtChanged(object sender, EventArgs e) => LensDirt.ApplyCurrent();
 
     private static void OnTargetSettingChanged(object sender, SettingChangedEventArgs e)
     {
@@ -151,6 +164,7 @@ public class OttoLensPlugin : BaseUnityPlugin
     /// Unpatching removes the Hud hooks, so Hud.OnDestroy can no longer tear the panel down:
     /// without this the panel would stay parented under the Hud with its tick loop running and
     /// the static Localization.OnLanguageChange handlers would keep this assembly reachable.
+    /// The camera profile is a shared asset that outlives the plugin, so its lens dirt goes back.
     private void OnDestroy()
     {
         try
@@ -158,6 +172,7 @@ public class OttoLensPlugin : BaseUnityPlugin
             Patches.Teardown();
             LensFormat.UnhookLanguage();
             LensReaders.UnhookLanguage();
+            LensDirt.Restore();
         }
         catch (Exception ex)
         {

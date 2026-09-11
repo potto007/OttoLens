@@ -23,7 +23,7 @@ internal sealed class CraftingStationReader : ILensReader
     // CraftingStation.CheckUsable runs Cover.GetCoverForPoint for a roof requiring station:
     // one 100 m spherecast plus seventeen 30 m raycasts, eighteen physics queries per call.
     // Vanilla only pays that on an interact or a craft press, never on hover; the panel would
-    // pay it at refreshHz. Hold the verdict for a couple of seconds per station (spec 6.4
+    // pay it at RefreshHz. Hold the verdict for a couple of seconds per station (spec 6.4
     // rule 7), the same way BeehiveReader.ReadState holds its cover check. Cover changes no
     // faster than the player builds.
     private const float RoofCacheSeconds = 2f;
@@ -191,8 +191,8 @@ internal sealed class CraftingStationReader : ILensReader
 
     /// Group by shared name and sum stacks, keeping first-appearance order, which is the
     /// container's own slot order. Row order belongs to the panel (design section 7): sorting
-    /// here as well would make `sortRows = slot` indistinguishable from `count`, because
-    /// LensPanel.ItemBlockView.Apply only reorders for `count` and otherwise keeps this order.
+    /// here as well would make `SortRows = Slot` indistinguishable from `Count`, because
+    /// LensPanel.ItemBlockView.Apply only reorders for `Count` and otherwise keeps this order.
     private void Regroup(List<ItemDrop.ItemData> items)
     {
         _groupIndex.Clear();

@@ -4,6 +4,9 @@ All notable changes to OttoLens.
 
 ## Unreleased
 
+- Lens dirt is off by default, because the Eye of Odin makes all things clear.
+  `RemoveLensDirt` brings it back.
+- Config keys are PascalCase.
 - Oven and cooking station fuel time moves to its own `Fuel` row, as on fires.
   It no longer overlaps the fuel meter.
 - No more "LiberationSans SDF Font Asset was not found" warnings in the log when
@@ -24,7 +27,7 @@ All notable changes to OttoLens.
 - No patch on the hover text itself, so it runs alongside other hover mods.
 - Client only. No ServerSync, nothing to install on a server.
 - World-placed chests stay hidden until opened once. Off with
-  `hideUnopenedWorldChests`.
-- Build piece status shows with the hammer out by default. `buildPieces` can be
+  `HideUnopenedWorldChests`.
+- Build piece status shows with the hammer out by default. `BuildPieces` can be
   `Off`, `WithHammer` or `Always`.
-- `H` toggles the panel in game. Change or disable it with `toggleKey`.
+- `H` toggles the panel in game. Change or disable it with `ToggleKey`.

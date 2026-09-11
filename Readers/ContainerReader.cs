@@ -193,8 +193,8 @@ internal sealed class ContainerReader : ILensReader
 
     // Group by shared name and sum stacks, keeping first-appearance order, which is the
     // container's own slot order. Row order belongs to the panel (design section 7): sorting
-    // here as well would make `sortRows = slot` indistinguishable from `count`, because
-    // LensPanel.ItemBlockView.Apply only reorders for `count` and otherwise keeps this order.
+    // here as well would make `SortRows = Slot` indistinguishable from `Count`, because
+    // LensPanel.ItemBlockView.Apply only reorders for `Count` and otherwise keeps this order.
     // Every vanilla item defaults to m_quality 1, so 1 maps to 0 (no upgrade) like
     // ItemDropReader; the group keeps the highest upgrade level.
     private void Regroup(Inventory inventory)

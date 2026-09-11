@@ -29,7 +29,7 @@ meters, and then item rows with the icon, the name and the count.
 - **Fermenters, beehives and sap collectors.** Contents, time to ready, and the
   honey or sap level.
 - **Plants and pickables.** Grow progress, and the item and yield on a live
-  bush. Respawn timers on picked bushes are opt in (`showRespawn`).
+  bush. Respawn timers on picked bushes are opt in (`ShowRespawn`).
 - **Build pieces.** Health and support, with the hammer out by default so the
   panel stays out of the way during normal play.
 - **Rocks, trees and logs.** Health as a fraction. Trees are off by default.
@@ -47,45 +47,50 @@ A world-placed chest you have not opened yet shows its title and `Contents
 unknown`. Open it once and the panel fills in. That is on by default because
 the surprise is part of the game.
 
+Lens dirt is off by default, because the Eye of Odin makes all things clear.
+Bloom still glows. Only the smudges on the camera lens are gone. Set
+`RemoveLensDirt` to `false` to bring them back.
+
 --------------------
 
 `A config file BepInEx/config/potto007.OttoLens.cfg is created after you run the game once with this mod.`
 
 Change it in a text editor or in game with Configuration Manager. Layout knobs
-apply on the next hover. `maxRows` and `showNames` rebuild the panel at once.
+apply on the next hover. `MaxRows` and `ShowNames` rebuild the panel at once.
 
 | Section | Key | Default | What it does |
 | --- | --- | --- | --- |
-| OttoLens | `enabled` | `true` | Master switch. Off hides the panel and skips every reader. |
-| OttoLens | `toggleKey` | `H` | Key that flips the master switch in game. `None` disables the key. |
-| OttoLens | `offsetX` | `150` | Left edge of the panel, pixels right of screen centre. 96 to 600. |
-| OttoLens | `offsetY` | `-32` | Top edge of the panel, pixels below screen centre. -400 to -16. |
-| OttoLens | `panelWidth` | `300` | Panel width in pixels. 240 to 420. |
-| OttoLens | `guiScale` | `1.0` | Scale of the whole panel. 0.75 to 1.6. Try 1.15 at 1440p. |
-| OttoLens | `maxRows` | `10` | Item rows per block before `and N more`. 1 to 16, and clamped to what fits on screen. |
-| OttoLens | `sortRows` | `Count` | `Count` sorts by count then name. `Slot` keeps the container's own order. |
-| OttoLens | `showNames` | `true` | Show the item name column. Off shows icon and count only. |
-| OttoLens | `showFullHealth` | `false` | Show the Health row on a build piece at 100 percent. |
-| OttoLens | `avoidHoverText` | `true` | Push the panel right when the vanilla hover line would run under it. |
-| OttoLens | `refreshHz` | `4` | How often the values update while the panel is visible. 1 to 10. |
-| OttoLens | `fadeSeconds` | `0.08` | Show and hide fade. 0 to 0.5. |
-| OttoLens | `backdropAlpha` | `0.88` | Opacity of the panel plate. 0.5 to 1.0. |
-| OttoLens | `showDays` | `true` | Add a game day figure to fuel and grow times longer than half a day. |
-| Targets | `hideUnopenedWorldChests` | `true` | Hide the contents of world-placed chests until you have opened them once. |
-| Targets | `containers` | `true` | Chests, carts and ship holds. |
-| Targets | `fires` | `true` | Fireplaces, hearths, torches and braziers. |
-| Targets | `smelters` | `true` | Smelters, kilns, blast furnaces and windmill fed smelters. |
-| Targets | `cooking` | `true` | Cooking stations and ovens. |
-| Targets | `fermenting` | `true` | Fermenters, beehives and sap collectors. |
-| Targets | `plants` | `true` | Planted crops and saplings. |
-| Targets | `pickables` | `true` | Pickable plants and item piles. |
-| Targets | `showRespawn` | `false` | Show the respawn countdown on an already picked pickable. Needs `pickables` on. |
-| Targets | `buildPieces` | `WithHammer` | `Off`, `WithHammer` for place mode only, or `Always` for any hovered piece. |
-| Targets | `mineables` | `true` | Mineable rocks. |
-| Targets | `treesAndRocks` | `false` | Trees, stumps and logs. |
-| Targets | `stands` | `true` | Item stands and armor stands. |
-| Targets | `creatures` | `true` | Tamed creatures and pets. |
-| Targets | `misc` | `true` | Tombstones, wisp spawners, shield generators, feasts, ground items and crafting stations. |
+| OttoLens | `Enabled` | `true` | Master switch. Off hides the panel and skips every reader. |
+| OttoLens | `ToggleKey` | `H` | Key that flips the master switch in game. `None` disables the key. |
+| OttoLens | `OffsetX` | `150` | Left edge of the panel, pixels right of screen centre. 96 to 600. |
+| OttoLens | `OffsetY` | `-32` | Top edge of the panel, pixels below screen centre. -400 to -16. |
+| OttoLens | `PanelWidth` | `300` | Panel width in pixels. 240 to 420. |
+| OttoLens | `GuiScale` | `1.0` | Scale of the whole panel. 0.75 to 1.6. Try 1.15 at 1440p. |
+| OttoLens | `MaxRows` | `10` | Item rows per block before `and N more`. 1 to 16, and clamped to what fits on screen. |
+| OttoLens | `SortRows` | `Count` | `Count` sorts by count then name. `Slot` keeps the container's own order. |
+| OttoLens | `ShowNames` | `true` | Show the item name column. Off shows icon and count only. |
+| OttoLens | `ShowFullHealth` | `false` | Show the Health row on a build piece at 100 percent. |
+| OttoLens | `AvoidHoverText` | `true` | Push the panel right when the vanilla hover line would run under it. |
+| OttoLens | `RefreshHz` | `4` | How often the values update while the panel is visible. 1 to 10. |
+| OttoLens | `FadeSeconds` | `0.08` | Show and hide fade. 0 to 0.5. |
+| OttoLens | `BackdropAlpha` | `0.88` | Opacity of the panel plate. 0.5 to 1.0. |
+| OttoLens | `ShowDays` | `true` | Add a game day figure to fuel and grow times longer than half a day. |
+| Camera | `RemoveLensDirt` | `true` | Remove the smudges that bloom draws over bright light. `false` brings them back. |
+| Targets | `HideUnopenedWorldChests` | `true` | Hide the contents of world-placed chests until you have opened them once. |
+| Targets | `Containers` | `true` | Chests, carts and ship holds. |
+| Targets | `Fires` | `true` | Fireplaces, hearths, torches and braziers. |
+| Targets | `Smelters` | `true` | Smelters, kilns, blast furnaces and windmill fed smelters. |
+| Targets | `Cooking` | `true` | Cooking stations and ovens. |
+| Targets | `Fermenting` | `true` | Fermenters, beehives and sap collectors. |
+| Targets | `Plants` | `true` | Planted crops and saplings. |
+| Targets | `Pickables` | `true` | Pickable plants and item piles. |
+| Targets | `ShowRespawn` | `false` | Show the respawn countdown on an already picked pickable. Needs `Pickables` on. |
+| Targets | `BuildPieces` | `WithHammer` | `Off`, `WithHammer` for place mode only, or `Always` for any hovered piece. |
+| Targets | `Mineables` | `true` | Mineable rocks. |
+| Targets | `TreesAndRocks` | `false` | Trees, stumps and logs. |
+| Targets | `Stands` | `true` | Item stands and armor stands. |
+| Targets | `Creatures` | `true` | Tamed creatures and pets. |
+| Targets | `Misc` | `true` | Tombstones, wisp spawners, shield generators, feasts, ground items and crafting stations. |
 
 ___________________________
 #### Installation (manual)

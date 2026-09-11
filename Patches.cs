@@ -62,6 +62,21 @@ internal static class Patches
         }
     }
 
+    /// Each new camera (main menu, world load) starts from its profile's lens dirt value.
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(CameraEffects), nameof(CameraEffects.Awake))]
+    private static void CameraEffectsAwakePostfix(CameraEffects __instance)
+    {
+        try
+        {
+            LensDirt.Apply(__instance);
+        }
+        catch (Exception ex)
+        {
+            LogOnce(ex);
+        }
+    }
+
     /// Full teardown: the panel, the per frame cache and every memoized world or language
     /// dependent string. Runs on Hud.OnDestroy (world unload) and again from the plugin's
     /// OnDestroy, which is the only path left once the patches above are gone.
