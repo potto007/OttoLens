@@ -113,7 +113,7 @@ game.
 ___________________________
 #### Installation (automatic)
 
-Use r2modman or the Thunderstore Mod Manager. Search for OttoLens and install.
+Use Gale, r2modman, or the Thunderstore Mod Manager. Search for OttoLens and install.
 ___________________________
 
 #### Servers
