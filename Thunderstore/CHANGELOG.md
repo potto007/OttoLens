@@ -2,7 +2,7 @@
 
 All notable changes to OttoLens.
 
-## Unreleased
+## v1.0.1
 
 - Windmills, kilns, spinning wheels and eitr refineries no longer call their
   input ore. The queue meter names the input (`Barley`, `Flax`), the empty
