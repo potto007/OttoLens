@@ -2,6 +2,14 @@
 
 All notable changes to OttoLens.
 
+## Unreleased
+
+- Windmills, kilns, spinning wheels and eitr refineries no longer call their
+  input ore. The queue meter names the input (`Barley`, `Flax`), the empty
+  headline follows it (`NO BARLEY`), and the running word is `MILLING` on a
+  windmill and `WORKING` on the others. Smelters and blast furnaces are
+  unchanged.
+
 ## v1.0.0
 
 - First release, for Valheim 1.0.7 and BepInEx 5.4.2350.

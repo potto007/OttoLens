@@ -12,6 +12,10 @@ internal sealed class SmelterReader : ILensReader
     private readonly LensItemBlock _queue = new();
     private readonly LensItemBlock _output = new();
 
+    // Upper-cased "NO <input>" headlines keyed by the localized input label, so the headline
+    // does not allocate a string every tick. A language change only adds new keys.
+    private readonly Dictionary<string, string> _emptyWords = new(StringComparer.Ordinal);
+
     // Distinct ore rows in queue order, keyed by prefab name; reused every tick.
     private readonly List<string> _oreOrder = new();
     private readonly Dictionary<string, int> _oreCounts = new(StringComparer.Ordinal);
@@ -65,10 +69,13 @@ internal sealed class SmelterReader : ILensReader
         report.Reset();
         report.Title = LensFormat.Name(smelter.m_name);
 
+        bool takesOre = TakesOre(smelter);
+        string inputLabel = InputLabel(smelter, takesOre);
+
         // Headline: the reason it is not running wins over the running word.
         if (active)
         {
-            report.Headline = becalmed ? "NO WIND" : "SMELTING";
+            report.Headline = becalmed ? "NO WIND" : RunningWord(smelter, takesOre);
             report.HeadlineColor = becalmed ? LensColor.Warn : LensColor.Gold;
         }
         else if (maxFuel > 0 && fuel <= 0f)
@@ -78,7 +85,7 @@ internal sealed class SmelterReader : ILensReader
         }
         else if (maxOre > 0 && queued <= 0)
         {
-            report.Headline = "NO ORE";
+            report.Headline = EmptyWord(inputLabel);
             report.HeadlineColor = LensColor.Dim;
         }
         else if (needsRoof)
@@ -97,7 +104,7 @@ internal sealed class SmelterReader : ILensReader
         if (maxOre > 0)
         {
             float queueFraction = Mathf.Clamp01(queued / (float)maxOre);
-            queueMeter = LensReport.Meter("Ore", queueFraction, LensFormat.Count(queued, maxOre), LensColor.Dim);
+            queueMeter = LensReport.Meter(inputLabel, queueFraction, LensFormat.Count(queued, maxOre), LensColor.Dim);
         }
 
         if (maxFuel > 0)
@@ -197,6 +204,89 @@ internal sealed class SmelterReader : ILensReader
             string name = source != null ? LensFormat.Name(source.m_itemData.m_shared.m_name) : LensFormat.Name(ore);
             _queue.Items.Add(new LensItem(GetSprite(ore, source), name, _oreCounts[ore]));
         }
+    }
+
+    // Smelter also drives the charcoal kiln, windmill, spinning wheel and eitr refinery, so the
+    // input is only called ore when every conversion starts from an ore or scrap prefab
+    // (CopperOre, IronScrap, FlametalOreNew). The match is case sensitive so SurtlingCore and
+    // similar names never count. A wildcard conversion (null m_from) is not known to be ore.
+    private static bool TakesOre(Smelter smelter)
+    {
+        List<Smelter.ItemConversion> conversions = smelter.m_conversion;
+        if (conversions.Count == 0)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < conversions.Count; i++)
+        {
+            ItemDrop from = conversions[i].m_from;
+            if (from == null)
+            {
+                return false;
+            }
+
+            string prefab = from.gameObject.name;
+            if (prefab.IndexOf("Ore", StringComparison.Ordinal) < 0 && prefab.IndexOf("Scrap", StringComparison.Ordinal) < 0)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // "Ore" for ore pieces, the item name when the piece takes a single input (Barley on a
+    // windmill, Flax on a spinning wheel), and a neutral "Input" for mixed or wildcard lists.
+    private static string InputLabel(Smelter smelter, bool takesOre)
+    {
+        if (takesOre)
+        {
+            return "Ore";
+        }
+
+        List<Smelter.ItemConversion> conversions = smelter.m_conversion;
+        ItemDrop? single = null;
+        for (int i = 0; i < conversions.Count; i++)
+        {
+            ItemDrop from = conversions[i].m_from;
+            if (from == null)
+            {
+                return "Input";
+            }
+
+            if (single == null)
+            {
+                single = from;
+            }
+            else if (single.gameObject.name != from.gameObject.name)
+            {
+                return "Input";
+            }
+        }
+
+        return single != null ? LensFormat.Name(single.m_itemData.m_shared.m_name) : "Input";
+    }
+
+    private static string RunningWord(Smelter smelter, bool takesOre)
+    {
+        if (takesOre)
+        {
+            return "SMELTING";
+        }
+
+        return smelter.m_windmill != null ? "MILLING" : "WORKING";
+    }
+
+    private string EmptyWord(string inputLabel)
+    {
+        if (!_emptyWords.TryGetValue(inputLabel, out string word))
+        {
+            word = "NO " + inputLabel.ToUpperInvariant();
+            _emptyWords[inputLabel] = word;
+        }
+
+        return word;
     }
 
     // Mirrors Smelter.GetItemConversion (first match in list order). Vanilla treats a null
