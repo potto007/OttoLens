@@ -19,6 +19,10 @@ public class OttoLensPlugin : BaseUnityPlugin
     private const string PanelSection = "OttoLens";
     private const string CameraSection = "Camera";
     private const string TargetSection = "Targets";
+    private const string InternalSection = "Internal";
+
+    // Bump when a migration is added to MigrateConfig.
+    private const int CurrentConfigVersion = 1;
 
     public enum SortRows
     {
@@ -39,6 +43,7 @@ public class OttoLensPlugin : BaseUnityPlugin
     internal static ConfigEntry<bool> Enabled = null!;
     // Spec 4.2 General item 2: runtime toggle key, default None (unbound). KeyCode.None disables the binding.
     internal static ConfigEntry<KeyCode> ToggleKey = null!;
+    private static ConfigEntry<int> ConfigVersion = null!;
     internal static ConfigEntry<int> OffsetX = null!;
     internal static ConfigEntry<int> OffsetY = null!;
     internal static ConfigEntry<int> PanelWidth = null!;
@@ -89,6 +94,26 @@ public class OttoLensPlugin : BaseUnityPlugin
         Log.LogInfo($"{ModName} {ModVersion} loaded.");
     }
 
+    // One-shot upgrades for configs written by older versions. Runs before any SettingChanged
+    // handler is attached, and each step runs once because the marker is saved with the file.
+    private static void MigrateConfig()
+    {
+        if (ConfigVersion.Value >= CurrentConfigVersion)
+        {
+            return;
+        }
+
+        // v1: ToggleKey default moved from H to None. H is the old default, so clear it once;
+        // a player who rebinds to H afterwards keeps it.
+        if (ConfigVersion.Value < 1 && ToggleKey.Value == KeyCode.H)
+        {
+            ToggleKey.Value = KeyCode.None;
+            Log.LogInfo("ToggleKey was the old default H; it is now unbound. Set it again in the config to use a key.");
+        }
+
+        ConfigVersion.Value = CurrentConfigVersion;
+    }
+
     private void BindConfig()
     {
         Enabled = Config.Bind(PanelSection, "Enabled", true, "Master switch. Off hides the panel and skips every reader.");
@@ -124,6 +149,9 @@ public class OttoLensPlugin : BaseUnityPlugin
         ShowStands = Config.Bind(TargetSection, "Stands", true, "Item stands and armor stands.");
         ShowCreatures = Config.Bind(TargetSection, "Creatures", true, "Tamed creatures and pets.");
         ShowMisc = Config.Bind(TargetSection, "Misc", true, "Tombstones, wisp spawners, shield generators, feasts, ground items and crafting stations.");
+
+        ConfigVersion = Config.Bind(InternalSection, "ConfigVersion", 0, new ConfigDescription("Config migration marker. Do not edit.", null, new ConfigurationManagerAttributes { Browsable = false }));
+        MigrateConfig();
 
         // Design section 7: geometry applies on the next rebuild; these force one now.
         // Row order is fixed at rebuild too, so SortRows needs the same push to take effect
@@ -181,4 +209,10 @@ public class OttoLensPlugin : BaseUnityPlugin
 
         _harmony.UnpatchSelf();
     }
+}
+
+// Read by name through reflection in BepInEx.ConfigurationManager; hides internal entries.
+internal sealed class ConfigurationManagerAttributes
+{
+    public bool? Browsable;
 }

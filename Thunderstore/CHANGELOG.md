@@ -5,7 +5,8 @@ All notable changes to OttoLens.
 ## Unreleased
 
 - `ToggleKey` is now unbound by default (was `H`). Set a key in the config to
-  enable it. Existing configs keep their current value.
+  enable it. An existing config still on `H` is cleared once on the first
+  launch after updating; bind it again if you want it back.
 
 ## v1.0.1
 
