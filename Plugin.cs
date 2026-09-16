@@ -1,3 +1,5 @@
+using System.IO;
+using System.Text.RegularExpressions;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using OttoLens.Readers;
@@ -9,7 +11,7 @@ namespace OttoLens;
 public class OttoLensPlugin : BaseUnityPlugin
 {
     internal const string ModName = "OttoLens";
-    internal const string ModVersion = "1.0.1";
+    internal const string ModVersion = "1.0.2";
     internal const string Author = "potto007";
     internal const string ModGUID = $"{Author}.{ModName}";
 
@@ -19,10 +21,13 @@ public class OttoLensPlugin : BaseUnityPlugin
     private const string PanelSection = "OttoLens";
     private const string CameraSection = "Camera";
     private const string TargetSection = "Targets";
-    private const string InternalSection = "Internal";
 
-    // Bump when a migration is added to MigrateConfig.
-    private const int CurrentConfigVersion = 1;
+    // v1.0.2 made ToggleKey unbound by default, but BepInEx had already written H into every
+    // config file an earlier version saved. Those files move to None once: the header names
+    // the version that last saved the file, and the first save by this version rewrites it.
+    // assembly_valheim declares its own global Version type.
+    private static readonly System.Version UnboundToggleKeySince = new(1, 0, 2);
+    private static readonly Regex SavedByHeader = new(@"^## Settings file was created by plugin .+ v(\d+(?:\.\d+){1,3})");
 
     public enum SortRows
     {
@@ -43,7 +48,6 @@ public class OttoLensPlugin : BaseUnityPlugin
     internal static ConfigEntry<bool> Enabled = null!;
     // Spec 4.2 General item 2: runtime toggle key, default None (unbound). KeyCode.None disables the binding.
     internal static ConfigEntry<KeyCode> ToggleKey = null!;
-    private static ConfigEntry<int> ConfigVersion = null!;
     internal static ConfigEntry<int> OffsetX = null!;
     internal static ConfigEntry<int> OffsetY = null!;
     internal static ConfigEntry<int> PanelWidth = null!;
@@ -94,28 +98,43 @@ public class OttoLensPlugin : BaseUnityPlugin
         Log.LogInfo($"{ModName} {ModVersion} loaded.");
     }
 
-    // One-shot upgrades for configs written by older versions. Runs before any SettingChanged
-    // handler is attached, and each step runs once because the marker is saved with the file.
-    private static void MigrateConfig()
+    /// Null when the file does not exist yet or its header does not name a version.
+    private System.Version? ReadSavedByVersion()
     {
-        if (ConfigVersion.Value >= CurrentConfigVersion)
+        try
+        {
+            if (!File.Exists(Config.ConfigFilePath))
+            {
+                return null;
+            }
+
+            using StreamReader reader = new(Config.ConfigFilePath);
+            Match match = SavedByHeader.Match(reader.ReadLine() ?? string.Empty);
+            return match.Success ? new System.Version(match.Groups[1].Value) : null;
+        }
+        catch (Exception ex)
+        {
+            Log.LogWarning($"Could not read the version header of {Path.GetFileName(Config.ConfigFilePath)}: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static void MigrateToggleKey(System.Version? savedBy)
+    {
+        if (savedBy == null || savedBy >= UnboundToggleKeySince || ToggleKey.Value != KeyCode.H)
         {
             return;
         }
 
-        // v1: ToggleKey default moved from H to None. H is the old default, so clear it once;
-        // a player who rebinds to H afterwards keeps it.
-        if (ConfigVersion.Value < 1 && ToggleKey.Value == KeyCode.H)
-        {
-            ToggleKey.Value = KeyCode.None;
-            Log.LogInfo("ToggleKey was the old default H; it is now unbound. Set it again in the config to use a key.");
-        }
-
-        ConfigVersion.Value = CurrentConfigVersion;
+        ToggleKey.Value = KeyCode.None;
+        Log.LogInfo($"ToggleKey changed from H to None (unbound), the default since v{UnboundToggleKeySince.ToString(3)}. The config was last saved by v{savedBy}.");
     }
 
     private void BindConfig()
     {
+        // Read before the first Bind, which saves the file under this version's header.
+        System.Version? savedBy = ReadSavedByVersion();
+
         Enabled = Config.Bind(PanelSection, "Enabled", true, "Master switch. Off hides the panel and skips every reader.");
         ToggleKey = Config.Bind(PanelSection, "ToggleKey", KeyCode.None, "Key that flips the master toggle at runtime. None (default) leaves it unbound.");
         OffsetX = Config.Bind(PanelSection, "OffsetX", 150, new ConfigDescription("Left edge of the panel, pixels right of screen centre.", new AcceptableValueRange<int>(96, 600)));
@@ -150,8 +169,13 @@ public class OttoLensPlugin : BaseUnityPlugin
         ShowCreatures = Config.Bind(TargetSection, "Creatures", true, "Tamed creatures and pets.");
         ShowMisc = Config.Bind(TargetSection, "Misc", true, "Tombstones, wisp spawners, shield generators, feasts, ground items and crafting stations.");
 
-        ConfigVersion = Config.Bind(InternalSection, "ConfigVersion", 0, new ConfigDescription("Config migration marker. Do not edit.", null, new ConfigurationManagerAttributes { Browsable = false }));
-        MigrateConfig();
+        MigrateToggleKey(savedBy);
+        // Bind saves only when it adds an entry, so a file with nothing new keeps the old header
+        // and a later hand edit to H would be cleared again. Stamp this version now.
+        if (savedBy != null && savedBy < new System.Version(ModVersion))
+        {
+            Config.Save();
+        }
 
         // Design section 7: geometry applies on the next rebuild; these force one now.
         // Row order is fixed at rebuild too, so SortRows needs the same push to take effect
@@ -209,10 +233,4 @@ public class OttoLensPlugin : BaseUnityPlugin
 
         _harmony.UnpatchSelf();
     }
-}
-
-// Read by name through reflection in BepInEx.ConfigurationManager; hides internal entries.
-internal sealed class ConfigurationManagerAttributes
-{
-    public bool? Browsable;
 }
