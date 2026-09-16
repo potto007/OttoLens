@@ -74,7 +74,7 @@ effect on the target you are already looking at.
 | Section | Key | Default | What it does |
 | --- | --- | --- | --- |
 | OttoLens | `Enabled` | `true` | Master switch. Off hides the panel and skips every reader. |
-| OttoLens | `ToggleKey` | `H` | Key that flips the master switch in game. `None` disables the key. It is ignored while chat, a sign, the console or any other text field has the keyboard. |
+| OttoLens | `ToggleKey` | `None` | Key that flips the master switch in game. Unbound by default; set a key to enable it. It is ignored while chat, a sign, the console or any other text field has the keyboard. |
 | OttoLens | `OffsetX` | `150` | Left edge of the panel, pixels right of screen centre. 96 to 600. |
 | OttoLens | `OffsetY` | `-32` | Top edge of the panel, pixels below screen centre. -400 to -16. |
 | OttoLens | `PanelWidth` | `300` | Panel width in pixels. 240 to 420. |

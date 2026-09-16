@@ -1466,7 +1466,7 @@ Grouped by behavior, not by name.
 
 A second configuration shape, grouped the same way, adds these ideas.
 
-- A keyboard shortcut that switches every visual off and on. Default `H`.
+- A keyboard shortcut that switches every visual off and on. Unbound by default.
 - Per target type switches for build pieces, fireplaces, cooking stations, mine
   rocks, trees, pickables, plants, sap collectors, beehives, and fermenters,
   with trees defaulting to off and the rest defaulting to on.
@@ -1493,7 +1493,7 @@ readable by opening the piece.
 
 1. `Master` toggle. Off disables every OttoLens visual and every patch body.
    Default on.
-2. `ToggleKey`. A key that flips the master toggle at runtime. Default `H`.
+2. `ToggleKey`. A key that flips the master toggle at runtime. Default `None` (unbound).
    Honour `KeyCode.None` as "no key".
 3. `ShowTimes` toggle. Show the time remaining figures. Default on.
 4. `ShowDays` toggle. Express long fuel and grow times in game days as well as

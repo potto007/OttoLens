@@ -37,7 +37,7 @@ public class OttoLensPlugin : BaseUnityPlugin
     // Panel knobs, design section 7. Clamps are enforced by the AcceptableValueRange and again
     // by LensPanel at build, so a hand edited config file cannot push the panel over the crosshair.
     internal static ConfigEntry<bool> Enabled = null!;
-    // Spec 4.2 General item 2: runtime toggle key, default H. KeyCode.None disables the binding.
+    // Spec 4.2 General item 2: runtime toggle key, default None (unbound). KeyCode.None disables the binding.
     internal static ConfigEntry<KeyCode> ToggleKey = null!;
     internal static ConfigEntry<int> OffsetX = null!;
     internal static ConfigEntry<int> OffsetY = null!;
@@ -92,7 +92,7 @@ public class OttoLensPlugin : BaseUnityPlugin
     private void BindConfig()
     {
         Enabled = Config.Bind(PanelSection, "Enabled", true, "Master switch. Off hides the panel and skips every reader.");
-        ToggleKey = Config.Bind(PanelSection, "ToggleKey", KeyCode.H, "Key that flips the master toggle at runtime. Set to None to disable.");
+        ToggleKey = Config.Bind(PanelSection, "ToggleKey", KeyCode.None, "Key that flips the master toggle at runtime. None (default) leaves it unbound.");
         OffsetX = Config.Bind(PanelSection, "OffsetX", 150, new ConfigDescription("Left edge of the panel, pixels right of screen centre.", new AcceptableValueRange<int>(96, 600)));
         OffsetY = Config.Bind(PanelSection, "OffsetY", -32, new ConfigDescription("Top edge of the panel, pixels below screen centre (negative).", new AcceptableValueRange<int>(-400, -16)));
         PanelWidth = Config.Bind(PanelSection, "PanelWidth", 300, new ConfigDescription("Fixed panel width in pixels.", new AcceptableValueRange<int>(240, 420)));

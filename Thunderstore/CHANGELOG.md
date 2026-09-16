@@ -2,6 +2,11 @@
 
 All notable changes to OttoLens.
 
+## Unreleased
+
+- `ToggleKey` is now unbound by default (was `H`). Set a key in the config to
+  enable it. Existing configs keep their current value.
+
 ## v1.0.1
 
 - Windmills, kilns, spinning wheels and eitr refineries no longer call their
