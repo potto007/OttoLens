@@ -2,6 +2,10 @@
 
 All notable changes to OttoLens.
 
+## v1.0.3
+
+- Rebuilt against Valheim 1.0.14. Every Harmony patch target still resolves in this build, and nothing else changed.
+
 ## v1.0.2
 
 - `ToggleKey` is now unbound by default (was `H`). Set a key in the config to
