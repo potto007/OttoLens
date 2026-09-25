@@ -2,7 +2,9 @@
 
 # OttoLens
 
-### For Valheim 1.0.7
+### For Valheim 1.0.16
+
+**Version 1.0.5**, built and Harmony-checked against Valheim 1.0.16.
 
 Look at a chest and see what is in it. Look at a smelter and see how much ore is
 queued, how much fuel is left, and how long until the next bar drops. Look at a
