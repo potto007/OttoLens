@@ -17,7 +17,6 @@ internal sealed class LensPanel : MonoBehaviour
     private const float ItemRowHeight = 32f;
     private const float ItemRowStride = 33f;
     private const float MeterWidth = 120f;
-    private const float MeterFillWidth = 118f;
 
     private static readonly Dictionary<string, Sprite?> SpriteCache = new(StringComparer.Ordinal);
     private static readonly string[] PlateNames = { "woodpanel_trophys", "woodpanel_settings", "panel_bkg_128", "darken_blob" };
@@ -707,15 +706,17 @@ internal sealed class LensPanel : MonoBehaviour
             _lastColor = color;
         }
 
-        public void SetText(string text)
+        /// Returns true when the text changed.
+        public bool SetText(string text)
         {
             if (string.Equals(text, _last, StringComparison.Ordinal))
             {
-                return;
+                return false;
             }
 
             _last = text;
             Tmp.text = text;
+            return true;
         }
 
         public void SetColor(Color color)
@@ -738,6 +739,7 @@ internal sealed class LensPanel : MonoBehaviour
         private readonly RectTransform _fill;
         private readonly Image _fillImage;
         private readonly TextSlot _value;
+        private readonly LayoutElement _valueLe;
         private float _lastFill = -1f;
         private Color _lastFillColor;
 
@@ -760,19 +762,25 @@ internal sealed class LensPanel : MonoBehaviour
             meterLe.preferredHeight = primary ? 10f : 6f;
             AddImage(meter, null, primary ? Palette.MeterTrack : Palette.RuleDim);
 
-            _fill = NewRect("Fill", meter);
-            _fill.anchorMin = new Vector2(0f, 0f);
+            // Inset track, fill anchored by fraction: the bar may shrink to make room for the value.
+            RectTransform track = NewRect("Track", meter);
+            track.anchorMin = Vector2.zero;
+            track.anchorMax = Vector2.one;
+            track.offsetMin = new Vector2(1f, 1f);
+            track.offsetMax = new Vector2(-1f, -1f);
+
+            _fill = NewRect("Fill", track);
+            _fill.anchorMin = Vector2.zero;
             _fill.anchorMax = new Vector2(0f, 1f);
-            _fill.pivot = new Vector2(0f, 0.5f);
-            _fill.anchoredPosition = new Vector2(1f, 0f);
-            _fill.sizeDelta = new Vector2(0f, -2f);
+            _fill.offsetMin = Vector2.zero;
+            _fill.offsetMax = Vector2.zero;
             _fillImage = AddImage(_fill, null, Palette.MeterGold);
             _lastFillColor = Palette.MeterGold;
 
             _value = NewText("Value", row, font, 15f, TextAlignmentOptions.MidlineRight, Palette.Count, ellipsis: false);
-            LayoutElement valueLe = _value.Go.AddComponent<LayoutElement>();
-            valueLe.minWidth = 0f;
-            valueLe.flexibleWidth = 1f;
+            _valueLe = _value.Go.AddComponent<LayoutElement>();
+            _valueLe.minWidth = 0f;
+            _valueLe.flexibleWidth = 1f;
             _go.SetActive(false);
         }
 
@@ -802,7 +810,12 @@ internal sealed class LensPanel : MonoBehaviour
             }
 
             LensMeter m = meter.Value;
-            _value.SetText(m.ValueText);
+            if (_value.SetText(m.ValueText))
+            {
+                // The value never yields width; the bar (min 0) shrinks instead of being overdrawn.
+                _valueLe.minWidth = Mathf.Ceil(_value.Tmp.GetPreferredValues(m.ValueText).x);
+            }
+
             Color role = Palette.Get(m.Color);
             _value.SetColor(primary ? role : Palette.Count);
             if (!m.Fraction.HasValue)
@@ -810,11 +823,11 @@ internal sealed class LensPanel : MonoBehaviour
                 return;
             }
 
-            float width = Mathf.Clamp01(m.Fraction.Value) * MeterFillWidth;
-            if (!Mathf.Approximately(width, _lastFill))
+            float fraction = Mathf.Clamp01(m.Fraction.Value);
+            if (!Mathf.Approximately(fraction, _lastFill))
             {
-                _lastFill = width;
-                _fill.sizeDelta = new Vector2(width, -2f);
+                _lastFill = fraction;
+                _fill.anchorMax = new Vector2(fraction, 1f);
             }
 
             if (role != _lastFillColor)
