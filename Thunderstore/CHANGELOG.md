@@ -2,6 +2,10 @@
 
 All notable changes to OttoLens.
 
+## 1.0.7
+
+- Rebuilt against Valheim 1.0.17. Every Harmony patch target still resolves in this build, and nothing else changed.
+
 ## 1.0.6
 
 - Fixed status rows where a long value such as `23m 53s (1.3 days)` was drawn on top of the progress bar. The bar now shrinks to make room for the value.
