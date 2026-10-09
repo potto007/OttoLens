@@ -15,10 +15,10 @@ container contents as item icons in a grid next to the hover text.
 2. Many members that OttoLens must read are private. Reference the three game
    assemblies through the BepInEx assembly publicizer, as the sibling mod
    OttoAura does. Its project file shows the pattern:
-   `/home/potto/src/valheim/mods/OttoAura/OttoAura.csproj`.
+   `OttoAura/OttoAura.csproj`.
 3. Do not copy code from any other mod. Write every reader from the behavior
    described here.
-4. Read `/home/potto/src/valheim/mods/OttoAura/WardAura.cs` for the house style
+4. Read `OttoAura/WardAura.cs` for the house style
    of a Harmony postfix on a `GetHoverText` method. That file is ours and is
    MIT-0. You may copy from it.
 5. Never write to a ZDO. OttoLens is a read-only lens. Several vanilla helper
