@@ -2,6 +2,10 @@
 
 All notable changes to OttoLens.
 
+## 1.0.9
+
+- Rebuilt against Valheim 1.0.21. Every Harmony patch target still resolves in this build, and nothing else changed.
+
 ## 1.0.8
 
 - Rebuilt against Valheim 1.0.20. Every Harmony patch target still resolves in this build, and nothing else changed.
